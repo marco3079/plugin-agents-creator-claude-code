@@ -152,6 +152,18 @@ Também dá para pedir em linguagem natural — *"cria um agente que revisa migr
 Claude abre o estúdio com um rascunho preenchido (ferramenta `open_agents_studio`, ensinada pela skill
 `criar-agentes`). Nada é gravado até você clicar em **Criar agente**.
 
+### No VS Code
+
+Não há nada a mais para instalar: a extensão do Claude Code no VS Code usa a mesma configuração do
+terminal e do app desktop (`~/.claude`). Com o plugin instalado no escopo de usuário, abra o painel
+do Claude no VS Code e digite `/agentes`: o estúdio abre ali mesmo, no painel.
+
+- A extensão do Claude Code precisa ser recente, com suporte a painéis de plugin (a mesma exigência
+  do terminal). Atualize pela aba Extensões do VS Code.
+- Se o VS Code já estava aberto durante a instalação, abra uma conversa nova no painel do Claude.
+- Se você apontou o Claude do VS Code para outra pasta de configuração (`CLAUDE_CONFIG_DIR` em
+  `claudeCode.environmentVariables`), instale o plugin também nessa configuração.
+
 ### Onde os arquivos ficam
 
 - **Projeto**: `.claude/agents/<nome>.md` — vai para o git e vale para quem usar o repositório; tem
