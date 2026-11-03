@@ -15,28 +15,59 @@ salva. O arquivo `.md` gerado é exatamente o formato que o Claude Code lê.
 
 ## Instalação
 
-Dentro do Claude Code, no terminal:
+### No app desktop do Claude (aba Code)
+
+O comando `/plugin` não funciona no app desktop. Lá a instalação é pelo menu:
+
+1. Clique em **+** ao lado da caixa de mensagem e escolha **Plugins**.
+2. Em **Add marketplace**, informe `marco3079/plugin-agents-creator-claude-code`.
+3. Clique em **Add plugin** e escolha **agents-creator**.
+4. Digite `/agentes`. Se o comando não aparecer, abra uma sessão nova.
+
+### No terminal
+
+Dentro do Claude Code:
 
 ```
 /plugin install agents-creator --marketplace marco3079/plugin-agents-creator-claude-code
 ```
 
-Responda `y` para adicionar o marketplace e escolha o escopo (usuário é o padrão). Pronto: digite
-`/agentes`.
-
-<details>
-<summary><b>Outras formas de instalar</b></summary>
-
-**Pelo shell:**
+Responda `y` para adicionar o marketplace e escolha o escopo (usuário é o padrão). Ou direto pelo
+shell:
 
 ```bash
 claude plugin install agents-creator --marketplace marco3079/plugin-agents-creator-claude-code
 ```
 
-**No app desktop:** clique em **+** ao lado da caixa de mensagem → **Plugins** → **Add marketplace**
-com `marco3079/plugin-agents-creator-claude-code` → **Add plugin**.
+Instalado pelo terminal no escopo de usuário, o plugin também carrega nas sessões do app desktop.
 
-**A partir de uma cópia local** (para desenvolver):
+Precisa de um Claude Code recente, com suporte a plugins de *function hooks* (os painéis ao lado do
+chat); foi testado no 2.1.312.
+
+<details>
+<summary><b>Problemas na instalação</b></summary>
+
+- **`/plugin` não está disponível**: você está no app desktop; use o menu **+ → Plugins** acima ou
+  instale pelo terminal.
+- **A opção `--marketplace` não é reconhecida**: o Claude Code está desatualizado. Atualize com
+  `claude update` (ou atualize o app). Em versões antigas, estes dois passos instalam, mas o painel
+  só funciona numa versão recente:
+  ```
+  /plugin marketplace add marco3079/plugin-agents-creator-claude-code
+  /plugin install agents-creator@agents-creator
+  ```
+- **Já existe um marketplace `agents-creator`** (por exemplo, a pasta local adicionada antes):
+  `/plugin marketplace remove agents-creator` e instale de novo.
+- **Erro de SSH ao clonar** ("Permission denied (publickey)"): adicione pelo endereço HTTPS,
+  `/plugin marketplace add https://github.com/marco3079/plugin-agents-creator-claude-code.git`.
+- **"Filename too long" no Windows**: rode `git config --global core.longpaths true` e tente de novo.
+- **Instalou, mas `/agentes` não aparece**: abra uma sessão nova (no terminal, `/reload-plugins`) e
+  confira se o Claude Code está atualizado.
+
+</details>
+
+<details>
+<summary><b>A partir de uma cópia local (para desenvolver)</b></summary>
 
 ```bash
 claude plugin marketplace add "D:\caminho\para\plugin-agents-creator-claude-code"
@@ -50,9 +81,6 @@ Um marketplace de pasta é lido da própria pasta: depois de editar os arquivos,
 `/reload-plugins`. Para uma sessão só, sem instalar: `claude --plugin-dir <pasta>`.
 
 </details>
-
-Precisa de um Claude Code recente, com suporte a plugins de *function hooks* (os painéis ao lado do
-chat).
 
 ## Telas
 
