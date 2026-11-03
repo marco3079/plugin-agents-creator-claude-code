@@ -1,0 +1,9 @@
+# Tipos que o Claude Code grava ao carregar o plugin de uma pasta vigiada
+.claude-plugin/types/
+.mcpb-cache/
+node_modules/
+# Dados locais de ferramentas de revisão do editor
+.claude-review/
+*.log
+.DS_Store
+Thumbs.db
