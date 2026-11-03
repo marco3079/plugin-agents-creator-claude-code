@@ -180,6 +180,7 @@ skills/criar-agentes/SKILL.md   ensina o Claude a abrir o estúdio com um rascun
 types/index.d.ts                contrato dos valores de estado
 tests/                          testes (formato dos arquivos e o painel em todas as superfícies)
 docs/                           logo, ícone (SVG) e as telas do README
+scripts/telas/                  gera de novo as telas do README e o ícone em PNG
 ```
 
 ```bash
@@ -192,6 +193,19 @@ claude plugin test .
 
 Depois que o Claude Code carrega o plugin de uma pasta que ele vigia, os tipos da API ficam em
 `.claude-plugin/types/` e `tsc -p .` faz a checagem de tipos.
+
+### Telas do README e ícone
+
+As imagens de `docs/prints/` e o `.claude-plugin/icon.png` saem do próprio código do painel: um cenário
+com agentes de exemplo desenha cada tela pelo kit de testes do Claude Code, o resultado vira HTML e o
+Chrome (ou Edge) em modo headless tira o print. Depois de mudar a interface, gere tudo de novo com:
+
+```bash
+node scripts/telas/gerar-telas.mjs
+```
+
+Precisa de Node 18+, do Claude Code (`claude` no PATH) e do Chrome ou Edge; se o navegador não for
+encontrado, informe o caminho em `CHROME_PATH`. O ícone é renderizado a partir de `docs/icon.svg`.
 
 A API de *function hooks* está em acesso antecipado e pode mudar entre versões do Claude Code.
 
