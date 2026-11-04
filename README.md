@@ -84,7 +84,10 @@ chat); foi testado no 2.1.312.
 - **"Filename too long" no Windows**: rode `git config --global core.longpaths true` e tente de novo.
 - **`Dependency "…" is not installed`** (o estúdio fica desligado): adicione o marketplace que falta com
   `/plugin marketplace add marco3079/<repo>` (a tabela no início desta seção diz qual é o repositório) e
-  rode `/reload-plugins`; o Claude Code instala as dependências que faltam.
+  rode `/reload-plugins`; o Claude Code instala as dependências que faltam. Isso também acontece ao
+  atualizar da 0.1.0: `claude plugin update` não instala as dependências novas. Rode `/reload-plugins`
+  ou instale a que falta pelo nome que a mensagem mostra, por exemplo
+  `claude plugin install diff-review@skill-diff-claude-code`.
 - **Instalou, mas `/agentes` não aparece**: abra uma sessão nova (no terminal, `/reload-plugins`) e
   confira se o Claude Code está atualizado.
 
