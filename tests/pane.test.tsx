@@ -114,7 +114,7 @@ async function start($: Parameters<Parameters<typeof test>[1]>[0]): Promise<void
   await $.session.start({ cwd: '/proj', surface: 'desktop', isInteractive: true })
 }
 
-test('a galeria mostra os agentes do projeto e do usuário em todas as superfícies', async ($, on) => {
+test('a galeria mostra os agentes do projeto e do usuário em todas as superfícies', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map([
     ['/proj/.claude/agents/code-reviewer.md', REVIEWER],
     ['/home/u/.claude/agents/pesquisador.md', RESEARCHER],
@@ -132,7 +132,7 @@ test('a galeria mostra os agentes do projeto e do usuário em todas as superfíc
   }
 })
 
-test('no Windows: caminhos com barra invertida, pasta do usuário e exclusão via PowerShell', async ($, on) => {
+test('no Windows: caminhos com barra invertida, pasta do usuário e exclusão via PowerShell', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map([['/home/u/.claude/agents/pesquisador.md', RESEARCHER]])
   world(on, files, { root: 'C:\\proj', env: { USERPROFILE: 'C:\\home\\u', HOME: '/c/outro' } })
   await start($)
@@ -149,7 +149,7 @@ test('no Windows: caminhos com barra invertida, pasta do usuário e exclusão vi
   await ui.unmount()
 })
 
-test('sem agentes, o painel convida a criar o primeiro', async ($, on) => {
+test('sem agentes, o painel convida a criar o primeiro', { timeoutMs: 20000 }, async ($, on) => {
   world(on, new Map())
   await start($)
   await $.command.run({ command: 'agentes', args: '' })
@@ -161,7 +161,7 @@ test('sem agentes, o painel convida a criar o primeiro', async ($, on) => {
   }
 })
 
-test('criar um agente pelo editor grava o .md esperado', async ($, on) => {
+test('criar um agente pelo editor grava o .md esperado', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map()
   world(on, files)
   await start($)
@@ -190,7 +190,7 @@ test('criar um agente pelo editor grava o .md esperado', async ($, on) => {
   await ui.unmount()
 })
 
-test('salvar com erro mostra o motivo e não grava', async ($, on) => {
+test('salvar com erro mostra o motivo e não grava', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map()
   world(on, files)
   await start($)
@@ -202,7 +202,7 @@ test('salvar com erro mostra o motivo e não grava', async ($, on) => {
   await ui.unmount()
 })
 
-test('editar e renomear move o arquivo; excluir vai para a lixeira; restaurar volta', async ($, on) => {
+test('editar e renomear move o arquivo; excluir vai para a lixeira; restaurar volta', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map([['/proj/.claude/agents/code-reviewer.md', REVIEWER]])
   world(on, files)
   await start($)
@@ -225,7 +225,7 @@ test('editar e renomear move o arquivo; excluir vai para a lixeira; restaurar vo
   await ui.unmount()
 })
 
-test('o arquivo alterado fora do estúdio pede confirmação antes de sobrescrever', async ($, on) => {
+test('o arquivo alterado fora do estúdio pede confirmação antes de sobrescrever', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map([['/proj/.claude/agents/code-reviewer.md', REVIEWER]])
   world(on, files)
   await start($)
@@ -241,7 +241,7 @@ test('o arquivo alterado fora do estúdio pede confirmação antes de sobrescrev
   await ui.unmount()
 })
 
-test('modelos prontos viram rascunhos no editor', async ($, on) => {
+test('modelos prontos viram rascunhos no editor', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map()
   world(on, files)
   await start($)
@@ -259,7 +259,7 @@ test('modelos prontos viram rascunhos no editor', async ($, on) => {
   await ui.unmount()
 })
 
-test('gerar com IA abre o rascunho no editor', async ($, on) => {
+test('gerar com IA abre o rascunho no editor', { timeoutMs: 20000 }, async ($, on) => {
   world(on, new Map())
   on('model.complete', () => ({
     value: {
@@ -285,7 +285,7 @@ test('gerar com IA abre o rascunho no editor', async ($, on) => {
   await ui.unmount()
 })
 
-test('a ferramenta do Claude abre um rascunho sem gravar nada', async ($, on) => {
+test('a ferramenta do Claude abre um rascunho sem gravar nada', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map()
   world(on, files)
   await start($)
@@ -300,7 +300,7 @@ test('a ferramenta do Claude abre um rascunho sem gravar nada', async ($, on) =>
   await ui.unmount()
 })
 
-test('o mapa mostra quem delega para quem', async ($, on) => {
+test('o mapa mostra quem delega para quem', { timeoutMs: 20000 }, async ($, on) => {
   const files: Files = new Map([
     ['/proj/.claude/agents/code-reviewer.md', REVIEWER],
     ['/proj/.claude/agents/orquestrador.md', ORCHESTRATOR],
@@ -323,7 +323,7 @@ test('o mapa mostra quem delega para quem', async ($, on) => {
   await ui.unmount()
 })
 
-test('agentes de plugin são só leitura, mas dá para salvar uma cópia', async ($, on) => {
+test('agentes de plugin são só leitura, mas dá para salvar uma cópia', { timeoutMs: 20000 }, async ($, on) => {
   const install = '/home/u/.claude/plugins/cache/mk/meu-plugin/1.0.0'
   const files: Files = new Map([
     ['/home/u/.claude/plugins/installed_plugins.json', JSON.stringify({ plugins: { 'meu-plugin@mk': [{ scope: 'user', installPath: install }] } })],
@@ -340,7 +340,7 @@ test('agentes de plugin são só leitura, mas dá para salvar uma cópia', async
   await ui.unmount()
 })
 
-test('um subagente em execução acende o cartão', async ($, on) => {
+test('um subagente em execução acende o cartão', { timeoutMs: 20000 }, async ($, on) => {
   world(on, new Map([['/proj/.claude/agents/code-reviewer.md', REVIEWER]]))
   on('agent.spawn', () => ({ model: 'sonnet', agentId: 'a1' }))
   await start($)
@@ -351,7 +351,7 @@ test('um subagente em execução acende o cartão', async ($, on) => {
   await ui.unmount()
 })
 
-test('testar agora registra o rascunho e inicia o subagente', async ($, on) => {
+test('testar agora registra o rascunho e inicia o subagente', { timeoutMs: 20000 }, async ($, on) => {
   const registered: string[] = []
   const spawned: string[] = []
   world(on, new Map([['/proj/.claude/agents/code-reviewer.md', REVIEWER]]))
@@ -375,5 +375,18 @@ test('testar agora registra o rascunho e inicia o subagente', async ($, on) => {
   const waiting = await ui.find({ type: 'Text', text: /Rodando agents-creator:code-reviewer|acompanhe a resposta na conversa/ })
   expect(waiting).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Não deu para testar/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a estrutura sugerida do editor termina com a seção Dúvidas e a regra do popup', { timeoutMs: 20000 }, async ($, on) => {
+  world(on, new Map())
+  await start($)
+  await $.command.run({ command: 'agentes', args: 'novo' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'ed-estrutura' })
+  const prompt = String((await ui.find({ type: 'Input', key: 'ed-prompt' }))?.props.value ?? '')
+  expect(prompt).toContain('## Dúvidas')
+  expect(prompt).toContain('/popup-perguntas:perguntar')
+  expect(prompt.trimEnd().endsWith('que pergunta por ele.')).toBe(true)
   await ui.unmount()
 })

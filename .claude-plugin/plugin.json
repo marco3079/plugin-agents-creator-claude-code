@@ -1,9 +1,18 @@
 {
   "name": "agents-creator",
-  "version": "0.1.0",
-  "description": "Estúdio visual de agentes e subagentes do Claude Code: galeria, editor com pré-visualização, modelos prontos, geração com IA, mapa de delegação e lixeira, num painel ao lado do chat.",
+  "version": "0.2.0",
+  "description": "Estúdio visual de agentes e subagentes do Claude Code: galeria, editor com pré-visualização, modelos prontos, estruturas de equipe, geração com IA, mapa de delegação e lixeira, num painel ao lado do chat.",
   "author": { "name": "Marco Antônio" },
   "license": "MIT",
   "keywords": ["agents", "subagents", "agentes", "editor", "visual", "pane"],
+  "dependencies": [
+    "historico@historico-requisicoes",
+    "historico-painel@historico-requisicoes",
+    "diff-review@skill-diff-claude-code",
+    "diff-review-pane@skill-diff-claude-code",
+    "squad-stream@skill-squad-room",
+    "squad-room-pane@skill-squad-room",
+    "popup-perguntas@popup-perguntas"
+  ],
   "types": "./types/index.d.ts"
 }

@@ -3,8 +3,10 @@
 import type { RenderElement } from 'claude-code'
 
 import { refresh, snapshot } from '../actions'
+import { estruturasSnapshot } from '../estruturas'
 import { baseName } from '../lib/files'
 import { editorView } from './editor'
+import { estruturasView } from './estruturas'
 import { type Ctx, type Dollar, type Kit, banner, nav, statusBar } from './kit'
 import { listView } from './list'
 import { generateView, mapView, templatesView, trashView } from './screens'
@@ -33,7 +35,9 @@ export async function renderPane($: Dollar, k: Kit): Promise<RenderElement> {
             ? mapView($, ctx)
             : view === 'lixeira'
               ? trashView($, ctx)
-              : listView($, ctx)
+              : view === 'estruturas'
+                ? estruturasView($, ctx, await estruturasSnapshot($))
+                : listView($, ctx)
 
   return (
     <Box flexDirection="column" gap={1}>

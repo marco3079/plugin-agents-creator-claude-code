@@ -5,6 +5,7 @@ import type { EngineInterface, ModelCompleteResult } from 'claude-code'
 import type { AgentFields } from '../../types'
 import { emptyFields, finalSlug } from './agent'
 import { COLORS, MODEL_ALIASES } from './catalog'
+import { REGRA_POPUP_PRINCIPAL, REGRA_POPUP_SUBAGENTE } from './perguntas'
 
 type Dollar = EngineInterface
 
@@ -13,11 +14,11 @@ const FORMAT_RULES = `Regras do formato de subagente do Claude Code:
 - "description": diz QUANDO o Claude deve delegar ao agente; comece com o papel e inclua gatilhos claros
   (ex.: "Use logo depois de alterar código para..."). Uma ou duas frases.
 - "tools": lista com o mínimo necessário de ferramentas, ou null para herdar todas. Ferramentas comuns:
-  Read, Glob, Grep, Edit, Write, Bash, WebFetch, WebSearch, NotebookEdit, AskUserQuestion, Agent.
+  Read, Glob, Grep, Edit, Write, Bash, WebFetch, WebSearch, NotebookEdit, Agent.
 - "model": "sonnet", "opus", "haiku" ou "inherit".
 - "color": uma de ${COLORS.map(color => `"${color.id}"`).join(', ')}.
 - "prompt": o prompt do sistema em Markdown, na segunda pessoa ("Você é..."), com papel, processo
-  passo a passo, critérios de qualidade e o formato da resposta. Entre 150 e 600 palavras.
+  passo a passo, critérios de qualidade e o formato da resposta. Entre 150 e 600 palavras. Termine o prompt com a seção "## Dúvidas" e esta regra, palavra por palavra: "${REGRA_POPUP_SUBAGENTE}" (num orquestrador que roda como agente principal, use esta: "${REGRA_POPUP_PRINCIPAL}").
 Escreva os textos em português do Brasil, a menos que o pedido esteja em outro idioma.`
 
 export function generationPrompt(request: string, existing: readonly string[], tools: readonly string[]): { system: string; prompt: string } {

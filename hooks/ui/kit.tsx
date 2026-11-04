@@ -17,6 +17,7 @@ import type {
 
 import type { Catalog, Draft, Flags, GenState, LiveTool, Status, TestState, TrashItem, View } from '../../types'
 import { clearStatus, go, newDraft, recover, refresh, toggleSection } from '../actions'
+import { abrirEstruturas } from '../estruturas'
 import { colorHex } from '../lib/catalog'
 import { bannerSvg } from '../lib/svg'
 
@@ -194,6 +195,7 @@ export function nav($: Dollar, ctx: Ctx): RenderElement {
     { key: 'novo', label: '+ Novo', target: 'novo' },
     { key: 'gerar', label: '✨ Gerar', target: 'gerar' },
     { key: 'modelos', label: 'Modelos', target: 'modelos' },
+    { key: 'estruturas', label: 'Estruturas', target: 'estruturas' },
     { key: 'mapa', label: 'Mapa', target: 'mapa' },
   ]
   if (draft && view !== 'editor') {
@@ -206,7 +208,9 @@ export function nav($: Dollar, ctx: Ctx): RenderElement {
         <Button
           key={`nav-${item.key}`}
           variant={item.target === view ? 'primary' : 'secondary'}
-          onPress={() => void (item.target === 'novo' ? newDraft($, null) : go($, item.target))}
+          onPress={() =>
+            void (item.target === 'novo' ? newDraft($, null) : item.target === 'estruturas' ? abrirEstruturas($) : go($, item.target))
+          }
         >
           {item.label}
         </Button>

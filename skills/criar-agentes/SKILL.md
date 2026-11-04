@@ -58,3 +58,4 @@ O corpo do arquivo é o prompt do sistema do agente.
 - O subagente não vê a conversa: o pedido de delegação precisa ser completo.
 - Para um time de agentes, crie um orquestrador com `tools: Agent(especialista-a, especialista-b), Read`
   e rode-o como principal (`claude --agent orquestrador` ou o mapa do estúdio).
+- Dúvidas com o usuário: o agente principal pergunta pelo popup (`/popup-perguntas:perguntar`, plugin popup-perguntas), com todas as dúvidas num popup só; subagentes não abrem o popup: devolvem as dúvidas ao principal.

@@ -7,6 +7,7 @@
 import type { Register } from 'claude-code'
 
 import { loadPersisted, openFromTool, openStudio, refreshIfOpen, trackEnd, trackSpawn } from './actions'
+import { carregarEstruturas } from './estruturas'
 import { makeKit } from './ui/kit'
 import { renderPane } from './ui/pane'
 
@@ -42,7 +43,7 @@ const TOOL_SCHEMA = {
       required: ['name', 'description', 'prompt'],
     },
     agent: { type: 'string', description: 'Name of an existing agent to open in the editor.' },
-    view: { type: 'string', enum: ['lista', 'modelos', 'gerar', 'mapa', 'lixeira'], description: 'Screen to open.' },
+    view: { type: 'string', enum: ['lista', 'modelos', 'gerar', 'mapa', 'lixeira', 'estruturas'], description: 'Screen to open.' },
   },
 }
 
@@ -52,7 +53,7 @@ export const register: Register = on => {
       await $.command.register({
         name: 'agentes',
         description: 'Estúdio de Agentes: crie e edite agentes e subagentes num painel visual',
-        argumentHint: '[novo | gerar <pedido> | modelos | mapa | <nome do agente>]',
+        argumentHint: '[novo | gerar <pedido> | modelos | estruturas | mapa | <nome do agente>]',
       })
     } catch {
       // sem o comando, a ferramenta ainda abre o painel
@@ -70,13 +71,31 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'agentes' }, async ($, e) => ({ text: await openStudio($, e.args) })).catch(() => ({
+  on('command.run', { command: 'agentes' }, async ($, e) => {
+    const text = await openStudio($, e.args)
+    if (/^\s*(estruturas|equipes)\b/i.test(e.args)) {
+      try {
+        await carregarEstruturas($)
+      } catch {
+        // a aba oferece o botão "Carregar" de novo
+      }
+    }
+    return { text }
+  }).catch(() => ({
     text: 'Não foi possível abrir o Estúdio de Agentes agora. Tente /agentes de novo.',
   }))
 
-  on('tool.call', { tool: 'mcp__agents-creator__open_agents_studio' }, async ($, e) => ({
-    result: await openFromTool($, { ...e }),
-  })).catch(() => ({
+  on('tool.call', { tool: 'mcp__agents-creator__open_agents_studio' }, async ($, e) => {
+    const result = await openFromTool($, { ...e })
+    if (e.view === 'estruturas') {
+      try {
+        await carregarEstruturas($)
+      } catch {
+        // a aba oferece o botão "Carregar" de novo
+      }
+    }
+    return { result }
+  }).catch(() => ({
     result: 'O Estúdio de Agentes não abriu. Sugira ao usuário digitar /agentes, ou crie o arquivo do agente diretamente.',
   }))
 

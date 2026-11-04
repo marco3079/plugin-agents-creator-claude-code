@@ -2,6 +2,7 @@
   "name": "agents-creator",
   "description": "Estúdio de Agentes: plugin para criar e editar agentes e subagentes do Claude Code visualmente.",
   "owner": { "name": "Marco Antônio" },
+  "allowCrossMarketplaceDependenciesOn": ["historico-requisicoes", "skill-diff-claude-code", "skill-squad-room", "popup-perguntas"],
   "plugins": [
     {
       "name": "agents-creator",

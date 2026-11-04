@@ -7,7 +7,7 @@ export type Scope = 'project' | 'user' | 'plugin'
 /** Onde o estúdio pode gravar (plugins são somente leitura). */
 export type SaveScope = 'project' | 'user'
 
-export type View = 'lista' | 'editor' | 'modelos' | 'gerar' | 'mapa' | 'lixeira'
+export type View = 'lista' | 'editor' | 'modelos' | 'gerar' | 'mapa' | 'lixeira' | 'estruturas'
 
 /** Campos editáveis de um agente: o frontmatter conhecido e o prompt do sistema. */
 export type AgentFields = {
@@ -134,6 +134,33 @@ export type TrashItem = {
 
 export type LiveTool = { name: string; mcp: boolean }
 
+/** Um template em Meus templates (biblioteca local): só o resumo, sem o conteúdo dos agentes. */
+export type LibraryItem = { id: string; title: string; icon: string; summary: string; origin: 'catalogo' | 'proprio'; createdAt: number; agents: string[] }
+
+/** Estado da aba Estruturas: catálogo, biblioteca local e o template ativo deste projeto. */
+export type EstruturasUi = {
+  aba: 'catalogo' | 'biblioteca'
+  /** Id do item aberto; '' mostra a lista. */
+  selecionado: string
+  origemSelecionado: 'catalogo' | 'biblioteca'
+  sobrescrever: boolean
+  confirmar: '' | 'aplicar' | 'remover' | 'apagar'
+  alvoConfirmacao: string
+  verAgente: string
+  verFluxo: boolean
+  titulo: string
+  icone: string
+  resumo: string
+  /** Versão do squad-stream instalada; '' quando não foi encontrado. */
+  squadVersao: string
+  carregado: boolean
+  biblioteca: LibraryItem[]
+  ativo: string
+  /** Caminhos dos agentes do template ativo, relativos ao projeto, com '/'. */
+  arquivosAtivos: string[]
+  ocupado: boolean
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'agents-creator': {
@@ -153,6 +180,8 @@ declare module 'claude-code' {
       usage: Shaped<Record<string, number>>
       trash: Shaped<TrashItem[]>
       liveTools: Shaped<LiveTool[]>
+      /** Aba Estruturas: catálogo, biblioteca local e o template ativo do projeto. */
+      estruturas: Shaped<EstruturasUi>
     }
   }
 }

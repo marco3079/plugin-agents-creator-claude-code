@@ -25,6 +25,7 @@ import type {
 import { agentSpec, emptyFields, finalSlug, finalize, liveSlug, parseAgent, splitList, toMarkdown, validate } from './lib/agent'
 import { complete, extractJson, fieldsFromJson, generationPrompt, improvementPrompt } from './lib/ai'
 import { baseName, dirName, displayPath, joinPath, readText, removeFile, scanCatalog, scopeDir, writeMainAgent } from './lib/files'
+import { REGRA_POPUP_GERAL } from './lib/perguntas'
 import { TEMPLATES } from './lib/templates'
 
 type Dollar = EngineInterface
@@ -606,6 +607,13 @@ export async function forget($: Dollar, id: string): Promise<void> {
   await say($, 'info', 'Removido da lixeira.')
 }
 
+/** Põe itens no começo da lixeira (os mais novos primeiro), respeita o limite e grava. */
+export async function pushTrash($: Dollar, items: readonly TrashItem[]): Promise<void> {
+  const trash = [...items, ...(await read($, trashAtom))].slice(0, TRASH_LIMIT)
+  await update($, trashAtom, () => trash)
+  await $.store.set(STORE_TRASH, trash).catch(() => undefined)
+}
+
 export async function setMainAgent($: Dollar, name: string): Promise<void> {
   const catalog = await ensureCatalog($)
   try {
@@ -723,7 +731,10 @@ export const PROMPT_SKELETON = `Você é um especialista em <área>.
 - <o que nunca fazer>
 
 ## Formato da resposta
-<como o resultado deve ser entregue>`
+<como o resultado deve ser entregue>
+
+## Dúvidas
+- ${REGRA_POPUP_GERAL}`
 
 // ---------------------------------------------------------------------------
 // teste ao vivo e subagentes em execução
@@ -798,9 +809,11 @@ const VIEW_WORDS: Record<string, View> = {
   map: 'mapa',
   lixeira: 'lixeira',
   trash: 'lixeira',
+  estruturas: 'estruturas',
+  equipes: 'estruturas',
 }
 
-/** `/agentes [novo | gerar <pedido> | modelos | mapa | lixeira | <nome>]`. */
+/** `/agentes [novo | gerar <pedido> | modelos | estruturas | mapa | lixeira | <nome>]`. */
 export async function openStudio($: Dollar, args: string): Promise<string> {
   const catalog = await refresh($)
   const text = args.trim()

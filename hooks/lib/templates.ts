@@ -2,6 +2,7 @@
 
 import type { AgentFields } from '../../types'
 import { emptyFields } from './agent'
+import { POPUP_TOOL, REGRA_POPUP_PRINCIPAL, REGRA_POPUP_SUBAGENTE } from './perguntas'
 
 export type Template = {
   id: string
@@ -43,7 +44,10 @@ Agrupe os achados por prioridade:
 - **Sugestão** (melhoria opcional)
 
 Para cada item, cite \`arquivo:linha\`, explique o problema e mostre como corrigir.
-Se estiver tudo certo, diga isso em uma frase.`,
+Se estiver tudo certo, diga isso em uma frase.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('depurador', '🐞', 'Depurador', 'Investiga erros e testes falhando até a causa raiz.', {
     name: 'depurador',
@@ -68,7 +72,10 @@ Se estiver tudo certo, diga isso em uma frase.`,
 - **Correção:** o que foi alterado (arquivo e trecho).
 - **Prevenção:** como evitar que volte a acontecer.
 
-Remova qualquer código temporário de diagnóstico antes de terminar.`,
+Remova qualquer código temporário de diagnóstico antes de terminar.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('testes', '🧪', 'Executor de testes', 'Roda os testes, entende as falhas e corrige.', {
     name: 'executor-de-testes',
@@ -89,7 +96,10 @@ Remova qualquer código temporário de diagnóstico antes de terminar.`,
 ## Formato da resposta
 - Comando usado e resultado (passou/falhou, quantos testes).
 - Falhas encontradas e o que foi corrigido em cada uma.
-- Qualquer teste instável (flaky) ou lento que mereça atenção.`,
+- Qualquer teste instável (flaky) ou lento que mereça atenção.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('seguranca', '🛡️', 'Auditor de segurança', 'Procura vulnerabilidades sem alterar arquivos.', {
     name: 'auditor-de-seguranca',
@@ -116,7 +126,10 @@ Para cada achado:
 - **Risco:** como poderia ser explorado.
 - **Correção recomendada:** com exemplo de código quando ajudar.
 
-Não reporte especulações sem evidência no código.`,
+Não reporte especulações sem evidência no código.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('documentador', '📝', 'Documentador', 'Escreve e atualiza README, docs e comentários.', {
     name: 'documentador',
@@ -139,7 +152,10 @@ Não reporte especulações sem evidência no código.`,
 3. Atualize os arquivos de documentação mantendo a estrutura existente.
 
 ## Formato da resposta
-Liste os arquivos alterados e resuma o que mudou em cada um.`,
+Liste os arquivos alterados e resuma o que mudou em cada um.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('pesquisador', '🌐', 'Pesquisador', 'Pesquisa na web e no código e traz fontes.', {
     name: 'pesquisador',
@@ -160,7 +176,10 @@ Liste os arquivos alterados e resuma o que mudou em cada um.`,
 - **Resposta curta:** a conclusão em 2 ou 3 frases.
 - **Detalhes:** o que sustenta a conclusão, com exemplos.
 - **Fontes:** links consultados.
-- **Incertezas:** o que não foi possível confirmar.`,
+- **Incertezas:** o que não foi possível confirmar.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('planejador', '🧭', 'Planejador', 'Analisa e propõe um plano antes de mexer no código.', {
     name: 'planejador',
@@ -179,16 +198,19 @@ Liste os arquivos alterados e resuma o que mudou em cada um.`,
 
 ## Formato da resposta
 - **Resumo:** a abordagem recomendada e por quê.
-- **Plano:** passos numerados, cada um com os arquivos afetados.
+- **Plano:** partes numeradas que o usuário possa aprovar uma a uma, cada uma com os arquivos afetados.
 - **Riscos:** o que pode dar errado e como mitigar.
 - **Alternativas:** o que foi descartado e o motivo.
-- **Validação:** como testar que a mudança funcionou.`,
+- **Validação:** como testar que a mudança funcionou.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
   make('orquestrador', '🎼', 'Orquestrador', 'Agente principal que coordena outros subagentes.', {
     name: 'orquestrador',
     description:
       'Coordenador de tarefas grandes. Use como agente principal (claude --agent orquestrador) para dividir o trabalho entre os subagentes especialistas e consolidar os resultados.',
-    tools: ['Agent(pesquisador, revisor-de-codigo, executor-de-testes)', 'Read', 'Grep', 'Glob'],
+    tools: ['Agent(pesquisador, revisor-de-codigo, executor-de-testes)', 'Read', 'Grep', 'Glob', POPUP_TOOL],
     model: 'opus',
     color: 'pink',
     prompt: `Você coordena uma equipe de subagentes especialistas.
@@ -200,12 +222,16 @@ Liste os arquivos alterados e resuma o que mudou em cada um.`,
 
 ## Processo
 1. Quebre o pedido em partes independentes.
-2. Delegue cada parte ao especialista certo, com instruções completas (ele não vê esta conversa).
-3. Rode em paralelo o que não depende entre si.
-4. Confira e consolide os resultados antes de responder.
+2. Mostre as partes ao usuário pelo popup (\`/popup-perguntas:perguntar\`) para ele aprovar: uma pergunta por parte (Aprovar, Ajustar ou Tirar do plano, com o resumo da parte na descrição). Siga só com as partes aprovadas; refaça as que pediram ajuste e pergunte de novo só por elas.
+3. Delegue cada parte aprovada ao especialista certo, com instruções completas (ele não vê esta conversa).
+4. Rode em paralelo o que não depende entre si.
+5. Confira e consolide os resultados antes de responder.
 
 ## Formato da resposta
-Um resumo do que foi feito, por quem, e o que ainda falta decidir.`,
+Um resumo do que foi feito, por quem, e o que ainda falta decidir.
+
+## Dúvidas
+- ${REGRA_POPUP_PRINCIPAL}`,
   }),
   make('refatorador', '♻️', 'Refatorador', 'Melhora a estrutura sem mudar o comportamento.', {
     name: 'refatorador',
@@ -228,6 +254,9 @@ Um resumo do que foi feito, por quem, e o que ainda falta decidir.`,
 - Condicionais aninhadas que podem ser simplificadas.
 
 ## Formato da resposta
-Liste cada refatoração feita, o motivo e como foi verificado que nada quebrou.`,
+Liste cada refatoração feita, o motivo e como foi verificado que nada quebrou.
+
+## Dúvidas
+- ${REGRA_POPUP_SUBAGENTE}`,
   }),
 ]
