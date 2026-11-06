@@ -23,7 +23,7 @@ const RAIZ = path.resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const FORA_DA_COPIA = new Set(['.git', 'docs', 'scripts', 'tests', '.claude', '.claude-review', 'CLAUDE.md', 'node_modules', 'extensions'])
 
 // Telas que o cenário imprime, na ordem do README. Se alguma faltar, o script para com erro.
-const TELAS_ESPERADAS = ['galeria', 'terminal-galeria', 'editor', 'editor-prompt', 'mapa', 'gerar', 'modelos', 'estruturas', 'estruturas-detalhe', 'estruturas-templates', 'estruturas-edicao']
+const TELAS_ESPERADAS = ['galeria', 'terminal-galeria', 'editor', 'editor-prompt', 'mapa', 'gerar', 'modelos', 'estruturas', 'estruturas-detalhe', 'estruturas-templates', 'estruturas-edicao', 'dependencias']
 
 // Navegadores procurados, nesta ordem, quando CHROME_PATH não está definido.
 const NAVEGADORES = [

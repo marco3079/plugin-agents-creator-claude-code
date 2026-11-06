@@ -1,13 +1,14 @@
 // Estúdio de Agentes: um painel ao lado do chat para criar e editar agentes e subagentes do Claude Code.
 //
-// Entradas: o comando /agentes, a ferramenta open_agents_studio (o Claude abre o painel com um
-// rascunho) e os eventos de subagentes, que acendem "em execução" nos cartões e trazem a resposta
-// do "Testar agora".
+// Entradas: o comando /agentes, o /agentes-dependencias (a tela Dependências), a ferramenta
+// open_agents_studio (o Claude abre o painel com um rascunho) e os eventos de subagentes, que
+// acendem "em execução" nos cartões e trazem a resposta do "Testar agora".
 
 import type { Register } from 'claude-code'
 
-import { loadPersisted, openFromTool, openStudio, refreshIfOpen, trackEnd, trackSpawn } from './actions'
-import { carregarEstruturas } from './estruturas'
+import { loadPersisted, openFromTool, openStudio, refreshIfOpen, snapshot, trackEnd, trackSpawn } from './actions'
+import { carregarDependencias, carregarEstruturas } from './estruturas'
+import { carregarRequisitos, verificarTudo } from './requisitos'
 import { makeKit } from './ui/kit'
 import { renderPane } from './ui/pane'
 
@@ -17,6 +18,7 @@ const TOOL_DESCRIPTION = [
   'visualize agents or subagents. Pass "draft" to pre-fill a NEW agent that the user reviews and saves in',
   'the pane (do not also write the file yourself), "agent" to open an existing one, or "view" to open a',
   'screen. The tool itself writes nothing.',
+  'View "dependencias" shows whether the plugins the studio needs, and what they need, are installed, running and up to date.',
 ].join(' ')
 
 const TOOL_SCHEMA = {
@@ -43,7 +45,7 @@ const TOOL_SCHEMA = {
       required: ['name', 'description', 'prompt'],
     },
     agent: { type: 'string', description: 'Name of an existing agent to open in the editor.' },
-    view: { type: 'string', enum: ['lista', 'modelos', 'gerar', 'mapa', 'lixeira', 'estruturas'], description: 'Screen to open.' },
+    view: { type: 'string', enum: ['lista', 'modelos', 'gerar', 'mapa', 'lixeira', 'estruturas', 'dependencias'], description: 'Screen to open.' },
   },
 }
 
@@ -53,10 +55,18 @@ export const register: Register = on => {
       await $.command.register({
         name: 'agentes',
         description: 'Estúdio de Agentes: crie e edite agentes e subagentes num painel visual',
-        argumentHint: '[novo | gerar <pedido> | modelos | estruturas | mapa | <nome do agente>]',
+        argumentHint: '[novo | gerar <pedido> | modelos | estruturas | dependencias | mapa | <nome do agente>]',
       })
     } catch {
       // sem o comando, a ferramenta ainda abre o painel
+    }
+    try {
+      await $.command.register({
+        name: 'agentes-dependencias',
+        description: 'Estúdio de Agentes: confere se os plugins de que ele precisa, e o que cada um precisa, estão instalados, rodando e atualizados',
+      })
+    } catch {
+      // sem o comando, a tela abre por /agentes dependencias
     }
     try {
       await $.tool.register({ name: 'open_agents_studio', description: TOOL_DESCRIPTION, inputSchema: TOOL_SCHEMA })
@@ -76,6 +86,7 @@ export const register: Register = on => {
     try {
       // Relê o disco: o template ativo (etiqueta na Galeria) e, na aba Estruturas, o catálogo e Meus templates.
       await carregarEstruturas($)
+      if ((await snapshot($)).view === 'dependencias') await carregarRequisitos($)
     } catch {
       // a aba oferece o botão "Carregar" de novo
     }
@@ -84,11 +95,29 @@ export const register: Register = on => {
     text: 'Não foi possível abrir o Estúdio de Agentes agora. Tente /agentes de novo.',
   }))
 
+  on('command.run', { command: 'agentes-dependencias' }, async ($, e) => {
+    const text = await openStudio($, 'dependencias')
+    try {
+      await carregarDependencias($)
+      await carregarRequisitos($)
+    } catch {
+      // a tela tem o botão Verificar tudo
+    }
+    // A verificação completa roda o claude e os programas (leva dezenas de segundos): fica para depois de responder.
+    $.clock.after(1, () => void verificarTudo($))
+    return {
+      text: `${text} Verificando os plugins, as skills, as extensões do VS Code, os programas e o servidor do popup; o resultado aparece no painel.`,
+    }
+  }).catch(() => ({
+    text: 'Não foi possível verificar as dependências agora. Tente /agentes-dependencias de novo.',
+  }))
+
   on('tool.call', { tool: 'mcp__agents-creator__open_agents_studio' }, async ($, e) => {
     const result = await openFromTool($, { ...e })
     try {
       // Igual ao /agentes, qualquer que seja a tela pedida: relê o disco das estruturas.
       await carregarEstruturas($)
+      if ((await snapshot($)).view === 'dependencias') await carregarRequisitos($)
     } catch {
       // a aba oferece o botão "Carregar" de novo
     }

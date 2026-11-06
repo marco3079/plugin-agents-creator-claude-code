@@ -48,21 +48,56 @@ const DEPENDENCIAS = [
   { plugin: 'popup-perguntas', marketplace: 'popup-perguntas', instalada: '2.3.1', catalogo: '2.3.1' },
 ]
 
+// Conteúdo de exemplo das skills e do bus.js: a tela só compara a cópia com o arquivo do plugin.
+const BUS_JS = '// bus.js de exemplo: a aba só lê o nome da pasta da versão'
+const SKILL_SQUAD_MD = '---\nname: squad-stream\ndescription: Sala de conversa entre os agentes (exemplo)\n---\n'
+const SKILL_REVISAO_MD = '---\nname: review-edits\ndescription: Revisão das edições do Claude Code (exemplo)\n---\n'
+const REVIEW_JS = '// review.js de exemplo: a tela Dependências só compara a cópia com o arquivo do plugin'
+
+// O marketplace do próprio estúdio: entra no known_marketplaces.json, sem marketplace.json (não tem plugin de dependência).
+const ESTUDIO = 'agents-creator'
+
+// As extensões do VS Code que cada repositório traz: o manifesto (na pasta da extensão) e o .vsix em dist/, na raiz do
+// marketplace. `instalada` é a versão no VS Code: a Squad Room ficou na 0.2.0, e o repositório já está na 0.2.1.
+const EXTENSOES = [
+  { marketplace: 'historico-requisicoes', manifesto: 'vscode-extension/package.json', nome: 'claude-request-history', versao: '1.3.0', instalada: '1.3.0', vsix: 'claude-request-history.vsix' },
+  { marketplace: 'skill-diff-claude-code', manifesto: 'extensions/claude-review/package.json', nome: 'claude-review', versao: '0.3.1', instalada: '0.3.1', vsix: 'claude-review-0.3.1.vsix' },
+  { marketplace: 'skill-squad-room', manifesto: 'extensions/squad-room/package.json', nome: 'squad-room', versao: '0.2.1', instalada: '0.2.0', vsix: 'squad-room-0.2.1.vsix' },
+  { marketplace: 'popup-perguntas', manifesto: 'vscode-extension/package.json', nome: 'claude-popup-perguntas', versao: '1.0.0', instalada: '1.0.0', vsix: 'claude-popup-perguntas-1.0.0.vsix' },
+  { marketplace: ESTUDIO, manifesto: 'extensions/estudio-de-agentes/package.json', nome: 'estudio-de-agentes', versao: '0.1.0', instalada: '0.1.0', vsix: 'estudio-de-agentes-0.1.0.vsix' },
+]
+
+// O que os programas devolvem à tela Dependências (Verificar tudo): as versões de node, git e code, e o servidor do
+// popup em `claude mcp list`. Qualquer outro comando dá certo sem saída, e nenhum processo de verdade roda.
+const SAIDAS: Record<string, string> = {
+  'node --version': 'v24.11.0\n',
+  'git --version': 'git version 2.51.0\n',
+  'code --version': '1.105.1\nabc123\nx64\n',
+  'claude mcp list': 'plugin:popup-perguntas:popup-perguntas: node /x/server/index.js - ✓ Connected\n',
+}
+
+/** A pasta, no cache, de um plugin de DEPENDENCIAS: a que o installed_plugins.json aponta e onde ficam as skills. */
+function pastaNoCache(plugin: string): string {
+  const dep = DEPENDENCIAS.find(item => item.plugin === plugin)
+  if (!dep) throw new Error(`o plugin ${plugin} não está em DEPENDENCIAS`)
+  return `${CONFIG}/plugins/cache/${dep.marketplace}/${dep.plugin}/${dep.instalada}`
+}
+
 /** As entradas de installed_plugins.json dos plugins de dependência, com a pasta de cada um no cache. */
 function instalados(): Record<string, { scope: string; version: string; installPath: string }[]> {
   return Object.fromEntries(
     DEPENDENCIAS.map(dep => [
       `${dep.plugin}@${dep.marketplace}`,
-      [{ scope: 'user', version: dep.instalada, installPath: `${CONFIG}/plugins/cache/${dep.marketplace}/${dep.plugin}/${dep.instalada}` }],
+      [{ scope: 'user', version: dep.instalada, installPath: pastaNoCache(dep.plugin) }],
     ]),
   )
 }
 
-/** known_marketplaces.json, e em cada marketplace o marketplace.json e o plugin.json (com a versão do catálogo). */
+/** known_marketplaces.json (com o do estúdio), e em cada marketplace de dependência o marketplace.json e o plugin.json (com a versão do catálogo). */
 function marketplaces(): [string, string][] {
   const nomes = [...new Set(DEPENDENCIAS.map(dep => dep.marketplace))]
   const conhecidos = Object.fromEntries(
-    nomes.map(nome => [nome, { source: { source: 'github', repo: `exemplo/${nome}` }, installLocation: `${CONFIG}/plugins/marketplaces/${nome}` }]),
+    [...nomes, ESTUDIO].map(nome => [nome, { source: { source: 'github', repo: `exemplo/${nome}` }, installLocation: `${CONFIG}/plugins/marketplaces/${nome}` }]),
   )
   const arquivos: [string, string][] = [[`${CONFIG}/plugins/known_marketplaces.json`, JSON.stringify(conhecidos)]]
   for (const nome of nomes) {
@@ -110,6 +145,47 @@ function templatesDeExemplo(): [string, string][] {
   ]
 }
 
+/** As skills dentro das pastas dos plugins no cache: o /sala procura a squad-stream, e o /revisao, a review-edits. */
+function skillsDoPlugin(): [string, string][] {
+  const squad = `${pastaNoCache('squad-stream')}/skills/squad-stream`
+  const revisao = `${pastaNoCache('diff-review')}/skills/review-edits`
+  return [
+    [`${squad}/SKILL.md`, SKILL_SQUAD_MD],
+    [`${revisao}/SKILL.md`, SKILL_REVISAO_MD],
+    [`${revisao}/scripts/review.js`, REVIEW_JS],
+  ]
+}
+
+/** A cópia avulsa da squad-stream em ~/.claude/skills, igual à do plugin. A review-edits não tem cópia (a tela mostra Copiar). */
+function copiaAvulsaDoSquad(): [string, string][] {
+  const pasta = `${HOME}/.claude/skills/squad-stream`
+  return [
+    [`${pasta}/SKILL.md`, SKILL_SQUAD_MD],
+    [`${pasta}/scripts/bus.js`, BUS_JS],
+  ]
+}
+
+/** Os manifestos e os .vsix das 5 extensões nos marketplaces (o dist/ fica na raiz de cada marketplace). */
+function extensoesDosMarketplaces(): [string, string][] {
+  return EXTENSOES.flatMap((ext): [string, string][] => {
+    const raiz = `${CONFIG}/plugins/marketplaces/${ext.marketplace}`
+    return [
+      [`${raiz}/${ext.manifesto}`, JSON.stringify({ publisher: 'marco3079', name: ext.nome, version: ext.versao })],
+      [`${raiz}/dist/${ext.vsix}`, ''],
+    ]
+  })
+}
+
+/** O ~/.vscode/extensions/extensions.json com as 5 extensões na versão instalada (a Squad Room ainda na 0.2.0). */
+function extensoesDoVsCode(): [string, string][] {
+  const lista = EXTENSOES.map(ext => ({
+    identifier: { id: `marco3079.${ext.nome}` },
+    version: ext.instalada,
+    relativeLocation: `marco3079.${ext.nome}-${ext.instalada}`,
+  }))
+  return [[`${HOME}/.vscode/extensions/extensions.json`, JSON.stringify(lista)]]
+}
+
 function world(on: On, files: Map<string, string>): void {
   mock.env(on, { HOME })
   mock.clock(on, { now: NOW })
@@ -150,6 +226,10 @@ function world(on: On, files: Map<string, string>): void {
     return { value: undefined }
   })
   on('fs.exists', (_, e) => ({ value: files.has(norm(e.path)) || children(norm(e.path)).size > 0 }))
+  // Os programas da tela Dependências dão a saída de SAIDAS; qualquer outro comando dá certo sem saída.
+  on('process.run', (_, e) => ({
+    value: { exitCode: 0, stdout: SAIDAS[e.argv.join(' ')] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
 }
 
 const dump = (name: string, tree: unknown): void => console.log(`DUMP:${name}:${JSON.stringify(tree)}`)
@@ -166,9 +246,13 @@ test('dump', { timeoutMs: 120000 }, async ($, on) => {
     [`${HOME}/.claude/agents/documentador.md`, agentFile('documentador')],
     [`${CONFIG}/plugins/installed_plugins.json`, JSON.stringify({ version: 2, plugins: { 'qa-kit@loja': [{ scope: 'user', installPath: install }], ...instalados() } })],
     [`${install}/agents/auditor.md`, agentFile('seguranca', 'auditor')],
-    [SQUAD_BUS, '// bus.js de exemplo: a aba só lê o nome da pasta da versão'],
+    [SQUAD_BUS, BUS_JS],
     ...marketplaces(),
     ...templatesDeExemplo(),
+    ...skillsDoPlugin(),
+    ...copiaAvulsaDoSquad(),
+    ...extensoesDosMarketplaces(),
+    ...extensoesDoVsCode(),
   ])
   world(on, files)
   await $.session.start({ cwd: ROOT, surface: 'desktop', isInteractive: true })
@@ -224,5 +308,12 @@ test('dump', { timeoutMs: 120000 }, async ($, on) => {
   dump('estruturas-templates', await ui.drawn())
   await ui.press({ key: 'est-editar-meu-squad' })
   dump('estruturas-edicao', await ui.drawn())
+  await ui.unmount()
+
+  // A tela Dependências: o comando abre a tela, e Verificar tudo confere os programas, o servidor e as cópias das skills.
+  await $.command.run({ command: 'agentes', args: 'dependencias' })
+  ui = await $.ui.mount({ ...pane(64), surface: 'desktop' })
+  await ui.press({ key: 'dep-verificar' })
+  dump('dependencias', await ui.drawn())
   await ui.unmount()
 })

@@ -1,4 +1,4 @@
-// Dependências do agents-creator: a lista dos 7 plugins, as versões instaladas, o catálogo dos marketplaces e o estado de cada um.
+// Dependências do agents-creator: a lista dos 7 plugins, as versões instaladas, o catálogo dos marketplaces, se cada um está ligado (enabledPlugins) e o estado de cada um.
 // Funções puras: a leitura dos arquivos e a execução do `claude` ficam em ../estruturas.
 
 import type { EstadoDependencia } from '../../types'
@@ -102,9 +102,22 @@ export function estadoDe(instalada: string, ultima: string, local: boolean): Est
   return compararVersoes(instalada, ultima) < 0 ? 'desatualizada' : 'atual'
 }
 
-/** Comando (argv) que resolve o estado: instala o que falta, atualiza o desatualizado. Nos outros casos, nenhum. */
+/** Estado com a ativação: instalado e desligado em enabledPlugins vira 'desativada'. Sem a informação (null), não muda. */
+export function estadoComAtivacao(estado: EstadoDependencia, ativo: boolean | null): EstadoDependencia {
+  return ativo === false && estado !== 'faltando' ? 'desativada' : estado
+}
+
+/** Se o plugin está ligado em `enabledPlugins` (o valor lido de $.settings): true/false, ou null quando não diz. */
+export function ativacaoDe(ligados: unknown, id: string): boolean | null {
+  if (!isRecord(ligados)) return null
+  const valor = ligados[id]
+  return typeof valor === 'boolean' ? valor : null
+}
+
+/** Comando (argv) que resolve o estado: instala o que falta, atualiza o desatualizado, ativa o desativado. Nos outros casos, nenhum. */
 export function comandoDe(dep: { id: string; estado: EstadoDependencia }): string[] | null {
   if (dep.estado === 'faltando') return ['claude', 'plugin', 'install', dep.id]
   if (dep.estado === 'desatualizada') return ['claude', 'plugin', 'update', dep.id]
+  if (dep.estado === 'desativada') return ['claude', 'plugin', 'enable', dep.id]
   return null
 }

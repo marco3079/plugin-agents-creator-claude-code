@@ -918,9 +918,13 @@ const VIEW_WORDS: Record<string, View> = {
   trash: 'lixeira',
   estruturas: 'estruturas',
   equipes: 'estruturas',
+  dependencias: 'dependencias',
+  'dependências': 'dependencias',
+  deps: 'dependencias',
+  plugins: 'dependencias',
 }
 
-/** `/agentes [novo | gerar <pedido> | modelos | estruturas | mapa | lixeira | <nome>]`. */
+/** `/agentes [novo | gerar <pedido> | modelos | estruturas | dependencias | mapa | lixeira | <nome>]`. */
 export async function openStudio($: Dollar, args: string): Promise<string> {
   const catalog = await refresh($)
   const text = args.trim()

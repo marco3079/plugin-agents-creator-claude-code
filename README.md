@@ -47,9 +47,31 @@ if (Test-Path "$repo\.git") { git -C $repo pull } else { git clone https://githu
 node "$repo\install.js"
 ```
 
-O instalador adiciona os marketplaces que faltam, instala os plugins que faltam e atualiza os que
-estiverem numa versão antiga; o que já está na versão mais nova, ou vem de uma pasta local, fica
-como está. Rode antes com `--simular` para ver o que ele faria.
+O instalador faz o seguinte:
+
+- registra os marketplaces que faltam e instala ou atualiza o estúdio e os 7 plugins;
+- atualiza o catálogo dos marketplaces que vêm do GitHub;
+- ativa os plugins que estiverem desativados;
+- instala o que esses plugins declaram como dependência;
+- copia as skills squad-stream e review-edits para `~/.claude/skills` (o /sala e o /revisao procuram lá);
+- instala ou atualiza as extensões do VS Code de cada plugin, quando o comando `code` está no PATH;
+- confere Node.js 18+, git e o VS Code;
+- confere se o servidor do popup conecta.
+
+O que já está na versão mais nova, ou vem de uma pasta local, fica como está. Rode antes com `--simular`
+para ver o que ele faria.
+
+Para ver a situação sem alterar nada, rode:
+
+```bash
+node "$HOME/.claude-agents-creator/repo/install.js" --verificar
+```
+
+Para também instalar o Node.js, o git ou o VS Code que faltarem (winget no Windows, brew no macOS), rode:
+
+```bash
+node "$HOME/.claude-agents-creator/repo/install.js" --programas
+```
 
 Também dá para pedir ao Claude:
 *instala https://github.com/marco3079/plugin-agents-creator-claude-code*. Ele segue o
@@ -91,6 +113,8 @@ claude plugin install agents-creator --marketplace marco3079/plugin-agents-creat
 
 Instalado pelo terminal no escopo de usuário, o plugin também carrega nas sessões do app desktop.
 
+Depois de instalar e de rodar `/reload-plugins` (ou abrir uma sessão nova), rode `/agentes-dependencias`: ela confere e corrige as skills do /sala e do /revisao, as extensões do VS Code e os programas, e confere se o servidor do popup está rodando.
+
 Precisa de um Claude Code recente, com suporte a plugins de *function hooks* (os painéis ao lado do
 chat); foi testado no 2.1.312.
 
@@ -117,6 +141,7 @@ chat); foi testado no 2.1.312.
   atualizar da 0.1.0, porque `claude plugin update` não instala as dependências novas: rode o
   instalador (`node install.js`, veja [Instalar ou atualizar tudo de uma vez](#instalar-ou-atualizar-tudo-de-uma-vez)),
   que instala de uma vez as que faltam.
+- **Ao atualizar da 0.3.0 para a 0.4.0**: rode o instalador de novo (`node install.js`, veja [Instalar ou atualizar tudo de uma vez](#instalar-ou-atualizar-tudo-de-uma-vez)) para copiar as skills e instalar as extensões do VS Code. Depois, rode `/reload-plugins` e use `/agentes-dependencias` para conferir.
 - **Instalou, mas `/agentes` não aparece**: abra uma sessão nova (no terminal, `/reload-plugins`) e
   confira se o Claude Code está atualizado.
 
@@ -156,6 +181,9 @@ Um marketplace de pasta é lido da própria pasta: depois de editar os arquivos,
   <tr>
     <td width="50%" valign="top"><b>Meus templates</b><br>Os templates salvos neste usuário: Editar nos seus; nas cópias do catálogo, Clonar para editar, e Atualizar quando o catálogo tem versão nova.<br><br><img src="docs/prints/estruturas-templates.png" alt="Meus templates"></td>
     <td width="50%" valign="top"><b>Template aberto</b><br>Edite um template seu na própria aba: nome, resumo, ícone, fluxo do CLAUDE.md e os agentes. Salvar atualiza só o template; o projeto muda quando você aplica o template.<br><br><img src="docs/prints/estruturas-edicao.png" alt="Template aberto na aba Estruturas"></td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top"><b>Dependências</b><br>Os plugins do estúdio e o que cada um precisa (skills, extensões do VS Code, programas e o servidor do popup), com Verificar tudo, Corrigir tudo e o botão de cada item.<br><br><img src="docs/prints/dependencias.png" alt="Tela Dependências" width="560"></td>
   </tr>
 </table>
 
@@ -256,7 +284,8 @@ Os nomes são os dos arquivos `<nome>.md` que a estrutura grava em `.claude/agen
   versão nova. **Procurar atualizações** atualiza os catálogos dos marketplaces; **Atualizar** (ou
   **Atualizar todos**) roda `claude plugin update`, e **Instalar**, no plugin que falta, roda
   `claude plugin install`. Os que vêm de uma pasta local ficam como estão.
-  Depois, rode `/reload-plugins`.
+  Depois, rode `/reload-plugins`. Um plugin desligado aparece como desativado, com o botão **Ativar**
+  (que roda `claude plugin enable`). O botão **Ver tudo o que eles precisam →** abre a tela Dependências.
 
 ### Seus templates
 
@@ -290,6 +319,67 @@ personalizar uma, clone-a.
 - **Galeria.** Os agentes do projeto que vieram do template ativo ganham a etiqueta **📦**, com o
   nome do template.
 
+## Dependências
+
+O estúdio depende de 7 plugins, e cada um precisa de outras coisas para funcionar: skills avulsas,
+extensão do VS Code, programas e o servidor do popup. O comando `/agentes-dependencias` mostra tudo
+numa tela só e verifica se está instalado, rodando e atualizado.
+
+Para abrir a tela:
+
+- `/agentes-dependencias`: abre a tela e verifica tudo.
+- `/agentes dependencias`: só abre a tela, sem verificar.
+- O botão **Ver tudo o que eles precisam →**, no bloco **Plugins necessários** da aba Estruturas.
+
+O que é verificado:
+
+| Item | Quem precisa | Como o estúdio sabe |
+|---|---|---|
+| os 7 plugins | o estúdio | versão instalada contra a do catálogo; ligado ou não em `enabledPlugins` |
+| plugins que os plugins declaram em `dependencies` | o plugin que declara | o plugin.json de cada plugin instalado (falta → Instalar) |
+| skill squad-stream em `~/.claude/skills` | o painel /sala (squad-room-pane) | o `scripts/bus.js` existe e a cópia é igual à do plugin |
+| skill review-edits em `~/.claude/skills` | o painel /revisao (diff-review-pane) | o `scripts/review.js` existe e a cópia é igual à do plugin |
+| extensões do VS Code (Claude Request History, Claude Review, Squad Room, Claude Popup de Perguntas, Estúdio de Agentes) | historico, diff-review, squad-stream, popup-perguntas e o estúdio | a lista de extensões do VS Code contra a versão do `.vsix` do repositório |
+| Node.js 18+, git, comando code | scripts e hooks dos plugins, o historico, a instalação das extensões | `--version` de cada um |
+| servidor do popup | a ferramenta perguntar | `claude mcp list` |
+
+Os símbolos na tela:
+
+- ✓ em dia;
+- ↑ versão nova;
+- ✗ falta;
+- ⏸ desativado;
+- ■ parado (o servidor não conectou);
+- – opcional (por exemplo, extensão sem o VS Code instalado);
+- ● pasta local;
+- ? não deu para saber.
+
+Os botões:
+
+- **Verificar tudo** atualiza os catálogos e testa os programas e o servidor do popup.
+- **Corrigir tudo** instala, atualiza e ativa os plugins, copia as skills e instala as extensões do VS Code. Não instala programas.
+- Cada linha com pendência tem o seu botão: **Instalar**, **Atualizar**, **Ativar** ou **Copiar**. A exceção é o servidor do popup: a tela só confere se ele conectou, e a linha diz o que fazer.
+- Um programa que falta tem o botão **Instalar**, que usa o winget no Windows e o brew no macOS. O winget aceita os termos do pacote sozinho. Depois, feche e abra o Claude Code.
+- Quando um comando não roda ali, a tela mostra no fim o comando pronto para o terminal.
+
+Depois de corrigir:
+
+- plugins: rode `/reload-plugins`;
+- extensões: no VS Code, **Developer: Reload Window**;
+- programas: feche e abra o Claude Code.
+
+Se nem o `/agentes` aparece, o estúdio não carregou porque falta uma dependência. Nesse caso, rode o instalador do marketplace, que fica em `~/.claude/plugins/marketplaces/agents-creator/install.js`. Antes, rode com `--verificar` para ver o que falta:
+
+```bash
+node "$HOME/.claude/plugins/marketplaces/agents-creator/install.js" --verificar
+```
+
+Se ele responder "opção desconhecida", o marketplace ainda está numa versão anterior à 0.4.0. Atualize-o e rode de novo:
+
+```bash
+claude plugin marketplace update agents-creator
+```
+
 ## Como usar
 
 Digite `/agentes` para abrir o painel. Atalhos:
@@ -302,6 +392,8 @@ Digite `/agentes` para abrir o painel. Atalhos:
 | `/agentes modelos` | os modelos prontos |
 | `/agentes mapa` | o mapa de delegação |
 | `/agentes estruturas` | as estruturas de equipe (templates) |
+| `/agentes-dependencias` | a tela Dependências e verifica tudo (plugins, skills, extensões do VS Code, programas e o servidor do popup) |
+| `/agentes dependencias` | só a tela Dependências, sem verificar |
 | `/agentes revisor-de-codigo` | esse agente no editor |
 
 Também dá para pedir em linguagem natural — *"cria um agente que revisa migrações de banco"* — e o
@@ -322,7 +414,7 @@ do Claude no VS Code e digite `/agentes`: o estúdio abre ali mesmo, no painel.
 
 #### Extensão Estúdio de Agentes (ícone próprio na barra lateral)
 
-Para abrir o estúdio sem passar pelo chat, instale a extensão que está em `dist/`:
+Para abrir o estúdio sem passar pelo chat, instale a extensão que está em `dist/`. O instalador (`node install.js`) e a tela Dependências também instalam essa extensão. Para instalar à mão:
 
 ```bash
 code --install-extension dist/estudio-de-agentes-0.1.0.vsix
@@ -356,23 +448,27 @@ O **agente principal** (escolhido no mapa ou no editor) é gravado como `"agent"
 ## Desenvolvimento
 
 ```
-install.js                      instala ou atualiza o estúdio e os 7 plugins de que ele depende
+install.js                      instala ou atualiza o estúdio, os 7 plugins e o que eles precisam
 INSTALL.md                      instruções para o Claude instalar o estúdio
 .claude-plugin/plugin.json      manifesto, ícone (icon.png) e marketplace.json
 hooks/hooks.json                aponta para o módulo de hooks
 hooks/register.tsx              comando /agentes, ferramenta, eventos de subagentes e o painel
 hooks/actions.ts                estado da sessão e o que cada botão faz
 hooks/estruturas.ts             aba Estruturas: baixar, alternar, salvar e apagar templates de equipe
+hooks/requisitos.ts             tela Dependências: verifica e corrige o que os plugins precisam
 hooks/lib/                      formato dos arquivos (YAML), varredura, IA, catálogo, SVGs, modelos
 hooks/lib/dependencias.ts       os 7 plugins e a leitura das versões instaladas
+hooks/lib/requisitos.ts         funções puras dos requisitos: skills, extensões, programas e o servidor do popup
 hooks/lib/estruturas/           catálogo das 10 equipes e o protocolo da sala do squad-stream
 hooks/lib/perguntas.ts          regra de dúvidas pelo popup (popup-perguntas)
 hooks/ui/                       telas: galeria, editor, modelos, estruturas, geração, mapa e lixeira
+hooks/ui/dependencias.tsx       tela Dependências (/agentes-dependencias)
 skills/criar-agentes/SKILL.md   ensina o Claude a abrir o estúdio com um rascunho
 types/index.d.ts                contrato dos valores de estado
 tests/                          testes (formato dos arquivos e o painel em todas as superfícies)
 docs/                           logo, ícone (SVG) e as telas do README
 scripts/telas/                  gera de novo as telas do README e o ícone em PNG
+scripts/testar-install.mjs      testes do instalador (install.js), rodados com node --test
 ```
 
 ```bash
@@ -381,6 +477,12 @@ claude plugin validate .
 
 ```bash
 claude plugin test .
+```
+
+Os testes do instalador (`install.js`) rodam com:
+
+```bash
+node --test scripts/testar-install.mjs
 ```
 
 Depois que o Claude Code carrega o plugin de uma pasta que ele vigia, os tipos da API ficam em

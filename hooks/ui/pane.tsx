@@ -6,6 +6,8 @@ import { refresh, snapshot } from '../actions'
 import { estruturasSnapshot, modeloEmEdicao } from '../estruturas'
 import { estruturaPorId } from '../lib/estruturas/index'
 import { baseName } from '../lib/files'
+import { requisitosSnapshot } from '../requisitos'
+import { dependenciasTela } from './dependencias'
 import { editorView } from './editor'
 import { estruturasView } from './estruturas'
 import { type Ctx, type Dollar, type Kit, banner, nav, statusBar } from './kit'
@@ -48,7 +50,9 @@ export async function renderPane($: Dollar, k: Kit): Promise<RenderElement> {
               ? trashView($, ctx)
               : view === 'estruturas'
                 ? estruturasView($, ctx, await estruturasSnapshot($), await modeloEmEdicao($))
-                : listView($, ctx)
+                : view === 'dependencias'
+                  ? dependenciasTela($, ctx, await estruturasSnapshot($), await requisitosSnapshot($))
+                  : listView($, ctx)
 
   return (
     <Box flexDirection="column" gap={1}>

@@ -1,6 +1,6 @@
 ---
 name: criar-agentes
-description: Cria, edita e visualiza agentes e subagentes do Claude Code (.claude/agents e ~/.claude/agents) pelo Estúdio de Agentes, um painel visual ao lado do chat. Use quando o usuário pedir para criar, editar, revisar, testar, organizar ou visualizar agentes/subagentes, montar um agente orquestrador, ou perguntar como escrever um bom agente.
+description: Cria, edita e visualiza agentes e subagentes do Claude Code (.claude/agents e ~/.claude/agents) pelo Estúdio de Agentes, um painel visual ao lado do chat. Use quando o usuário pedir para criar, editar, revisar, testar, organizar ou visualizar agentes/subagentes, montar um agente orquestrador, perguntar como escrever um bom agente, ou relatar problema com o /sala, o /revisao, o popup de perguntas, o histórico ou as extensões do VS Code.
 ---
 
 # Estúdio de Agentes
@@ -16,9 +16,10 @@ o mapa de delegação e uma lixeira. O usuário também abre o painel digitando 
   com `draft` = `{ name, description, prompt, tools?, model?, color?, permissionMode?, effort?, maxTurns?, skills?, memory?, scope? }`.
   O painel abre com o rascunho e o usuário revisa e salva. **Não grave o arquivo você mesmo** depois disso.
 - **Abrir um agente existente:** `agent: "<nome>"`.
-- **Mostrar uma tela:** `view: "mapa" | "modelos" | "gerar" | "lista" | "lixeira"`.
+- **Mostrar uma tela:** `view: "mapa" | "modelos" | "gerar" | "lista" | "lixeira" | "estruturas" | "dependencias"`. A tela `dependencias` mostra se os plugins de que o estúdio precisa, e o que eles precisam, estão instalados, rodando e atualizados.
 - Sem a ferramenta (por exemplo em `claude -p`), escreva o arquivo diretamente no formato abaixo
   e sugira `/agentes` para revisar visualmente.
+- **Problemas com os plugins:** quando o usuário relatar problema com o /sala, o /revisao, o popup de perguntas, o histórico ou as extensões do VS Code, sugira `/agentes-dependencias`; no terminal, `node install.js --verificar` na pasta do plugin.
 
 ## Formato do arquivo
 

@@ -5,9 +5,11 @@ import { expect, test } from 'claude-code/testing'
 
 import {
   DEPENDENCIAS,
+  ativacaoDe,
   comandoDe,
   compararVersoes,
   entradaNoCatalogo,
+  estadoComAtivacao,
   estadoDe,
   marketplacesConhecidos,
   versaoDoManifesto,
@@ -132,4 +134,25 @@ test('DEPENDENCIAS tem os 7 plugins do manifesto, sem repetir nenhum, e cada id 
   expect(new Set(ids).size).toBe(7)
   expect([...ids].sort()).toEqual([...IDS_ESPERADOS].sort())
   for (const dep of DEPENDENCIAS) expect(dep.id).toBe(`${dep.nome}@${dep.marketplace}`)
+})
+
+test('comandoDe ativa o plugin desativado: claude plugin enable com o id dele', async () => {
+  const id = 'historico@historico-requisicoes'
+  expect(comandoDe({ id, estado: 'desativada' })).toEqual(['claude', 'plugin', 'enable', id])
+})
+
+test('estadoComAtivacao: instalado e desligado vira desativada; ligado ou sem a informação não muda; não instalado segue faltando', async () => {
+  expect(estadoComAtivacao('atual', false)).toBe('desativada')
+  expect(estadoComAtivacao('desatualizada', false)).toBe('desativada')
+  expect(estadoComAtivacao('faltando', false)).toBe('faltando')
+  expect(estadoComAtivacao('atual', true)).toBe('atual')
+  expect(estadoComAtivacao('local', null)).toBe('local')
+})
+
+test('ativacaoDe dá o boolean de enabledPlugins[id]; sem o id, sem o objeto ou com valor que não é boolean, null', async () => {
+  expect(ativacaoDe({ a: false }, 'a')).toBe(false)
+  expect(ativacaoDe({ a: true }, 'a')).toBe(true)
+  expect(ativacaoDe({ a: false }, 'b')).toBeNull()
+  expect(ativacaoDe(null, 'a')).toBeNull()
+  expect(ativacaoDe({ a: 'sim' }, 'a')).toBeNull()
 })

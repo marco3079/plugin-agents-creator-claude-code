@@ -7,7 +7,7 @@ export type Scope = 'project' | 'user' | 'plugin'
 /** Onde o estúdio pode gravar (plugins são somente leitura). */
 export type SaveScope = 'project' | 'user'
 
-export type View = 'lista' | 'editor' | 'modelos' | 'gerar' | 'mapa' | 'lixeira' | 'estruturas'
+export type View = 'lista' | 'editor' | 'modelos' | 'gerar' | 'mapa' | 'lixeira' | 'estruturas' | 'dependencias'
 
 /** Campos editáveis de um agente: o frontmatter conhecido e o prompt do sistema. */
 export type AgentFields = {
@@ -142,11 +142,66 @@ export type LiveTool = { name: string; mcp: boolean }
 /** Um template em Meus templates (biblioteca local): só o resumo, sem o conteúdo dos agentes. `base`: id da estrutura do catálogo de origem, ou ''. */
 export type LibraryItem = { id: string; title: string; icon: string; summary: string; origin: 'catalogo' | 'proprio'; createdAt: number; agents: string[]; base: string }
 
-/** Estado de um plugin exigido: `local` é pasta do desenvolvedor (não é comparada com o catálogo). */
-export type EstadoDependencia = 'atual' | 'desatualizada' | 'faltando' | 'local' | 'desconhecida'
+/** Estado de um plugin exigido: `local` é pasta do desenvolvedor (não é comparada com o catálogo); `desativada`: instalado, mas desligado. */
+export type EstadoDependencia = 'atual' | 'desatualizada' | 'faltando' | 'local' | 'desconhecida' | 'desativada'
 
-/** Um plugin exigido pelo agents-creator. `instalada` vazia: não instalado; `ultima` vazia: versão do catálogo desconhecida. */
-export type DepInfo = { id: string; nome: string; para: string; marketplace: string; repo: string; instalada: string; ultima: string; estado: EstadoDependencia }
+/**
+ * Um plugin exigido pelo agents-creator. `instalada` vazia: não instalado; `ultima` vazia: versão do catálogo desconhecida.
+ * `ativo`: ligado (true) ou desligado (false) em `enabledPlugins`; null quando as configurações não dizem.
+ */
+export type DepInfo = {
+  id: string
+  nome: string
+  para: string
+  marketplace: string
+  repo: string
+  instalada: string
+  ultima: string
+  estado: EstadoDependencia
+  ativo: boolean | null
+}
+
+/** O que um plugin exigido precisa além dele mesmo (as dependências das dependências). */
+export type TipoRequisito = 'plugin' | 'skill' | 'extensao' | 'programa' | 'servidor'
+
+/**
+ * Estado de um requisito neste computador. `parado`: o servidor está configurado, mas não conectou.
+ * `opcional`: não está aqui, mas só faz falta em certos casos (uma extensão sem o VS Code instalado).
+ */
+export type EstadoRequisito = 'ok' | 'desatualizado' | 'faltando' | 'parado' | 'opcional' | 'desconhecido'
+
+/** Um requisito com o estado neste computador. */
+export type RequisitoInfo = {
+  /** Único na lista: `skill:squad-stream`, `extensao:squad-room`, `programa:git`, `servidor:popup-perguntas`, `plugin:<nome@marketplace>`. */
+  id: string
+  tipo: TipoRequisito
+  /** Como aparece na tela: `skill squad-stream`, `extensão Squad Room`, `git`, `servidor do popup`. */
+  nome: string
+  /** Ids (`nome@marketplace`) dos plugins exigidos que precisam dele; vazio quando serve a todos. */
+  de: string[]
+  /** Para que serve, começando com minúscula: `o /sala achar a sala dos agentes`. */
+  para: string
+  /** Versão achada neste computador; '' = não achou, ou o item não tem versão. */
+  encontrada: string
+  /** Versão esperada (a do repositório, ou a mínima de um programa); '' = qualquer uma. */
+  esperada: string
+  estado: EstadoRequisito
+  /** Explicação curta para a linha; '' = nenhuma. */
+  detalhe: string
+}
+
+/** Estado da tela Dependências: o 2º nível. Os plugins exigidos ficam em `EstruturasUi.dependencias`. */
+export type RequisitosUi = {
+  lista: RequisitoInfo[]
+  /** Já leu do disco ao menos uma vez nesta sessão. */
+  carregado: boolean
+  /** Uma verificação ou correção está rodando. */
+  ocupado: boolean
+  /** Quando o último "Verificar tudo" terminou ($.clock.now()); 0 = ainda não rodou nesta sessão. */
+  verificadoEm: number
+  /** Comandos para rodar à mão, quando o estúdio não conseguiu rodar (um por linha, já prontos para copiar). */
+  manuais: string[]
+}
 
 /** Um agente do template ativo que mudou no projeto: `alterado` (conteúdo diferente) ou `faltando` (não está no projeto). */
 export type MudancaAgente = { file: string; tipo: 'alterado' | 'faltando' }
@@ -223,6 +278,8 @@ declare module 'claude-code' {
       liveTools: Shaped<LiveTool[]>
       /** Aba Estruturas: catálogo, biblioteca local e o template ativo do projeto. */
       estruturas: Shaped<EstruturasUi>
+      /** Tela Dependências: o que cada plugin exigido precisa (skills, extensões, programas, servidor). */
+      requisitos: Shaped<RequisitosUi>
     }
   }
 }

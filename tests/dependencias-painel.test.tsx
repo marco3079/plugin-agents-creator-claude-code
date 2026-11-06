@@ -1,6 +1,6 @@
 // A seção "Plugins necessários" da aba Estruturas, sobre um sistema de arquivos em memória: o que está
-// instalado ou desatualizado, o que é pasta local, a procura de atualizações, o aviso sem o claude e as
-// duas rotas do claude (a direta e a do Windows, com where.exe e cmd.exe).
+// instalado ou desatualizado, o que é pasta local, o que está desligado em enabledPlugins, a procura de
+// atualizações, o aviso sem o claude e as duas rotas do claude (a direta e a do Windows, com where.exe e cmd.exe).
 
 import type { On } from 'claude-code'
 import { type Engine, expect, mock, test } from 'claude-code/testing'
@@ -35,7 +35,7 @@ const SQUAD_LOCAL = '/dev/skill-squad-room'
 
 type Files = Map<string, string>
 type Runs = string[][]
-type WorldOptions = { claudeAusente?: boolean; windows?: boolean }
+type WorldOptions = { claudeAusente?: boolean; windows?: boolean; ligados?: Record<string, boolean> }
 
 /** O resultado de um comando que terminou bem. */
 function sucesso() {
@@ -46,6 +46,7 @@ function sucesso() {
  * O mundo abaixo do plugin, como em estruturas-painel.test.tsx: ambiente, relógio, store, sessão e arquivos em
  * memória. O process.run registra em `runs` cada comando do claude. Com `claudeAusente`, esses comandos rejeitam
  * (o claude não está no PATH). Com `windows`, a raiz da sessão tem letra de unidade, e o painel usa a rota do Windows.
+ * Com `ligados`, o settings.read responde com esse enabledPlugins (quem está desligado aparece como desativado).
  */
 function world(on: On, files: Files, runs: Runs, options: WorldOptions = {}): void {
   files.set(SQUAD_BUS, '// bus.js de exemplo: o painel só verifica que o arquivo existe')
@@ -105,6 +106,11 @@ function world(on: On, files: Files, runs: Runs, options: WorldOptions = {}): vo
     }
     return { value: sucesso() }
   })
+  // O settings.read responde com as configurações inteiras (o `key` é lido dentro delas): só o enabledPlugins dado.
+  if (options.ligados !== undefined) {
+    const ligados = options.ligados
+    on('settings.read', () => ({ value: { enabledPlugins: ligados } }))
+  }
 }
 
 async function start($: Engine, windows = false): Promise<void> {
@@ -326,5 +332,29 @@ test('Atualizar todos roda o update de cada desatualizado, em sequência, e term
   ])
   // A mensagem do fim traz o aviso para recarregar os plugins.
   expect(await ui.find({ type: 'Text', text: /Rode \/reload-plugins/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('um plugin instalado e desligado em enabledPlugins aparece como desativado, com o botão Ativar, que roda claude plugin enable', { timeoutMs: 20000 }, async ($, on) => {
+  const runs: Runs = []
+  world(on, arquivosDoClaude('1.1.0'), runs, { ligados: { 'historico@historico-requisicoes': false } })
+  await start($)
+  await $.command.run({ command: 'agentes', args: 'estruturas' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  // Desligado, o bloco abre sozinho, mesmo com o historico já na versão atual.
+  expect(await ui.find({ key: 'est-dep-historico' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /desativado/ })).toBeDefined()
+  expect(await ui.find({ key: 'est-dep-atualizar-historico' })).toBeDefined()
+  await ui.press({ key: 'est-dep-atualizar-historico' })
+  expect(rodou(runs, ['plugin', 'enable', 'historico@historico-requisicoes'])).toBe(true)
+  await ui.unmount()
+})
+
+test('o bloco Plugins necessários tem o botão Ver tudo o que eles precisam', { timeoutMs: 20000 }, async ($, on) => {
+  world(on, arquivosDoClaude('1.0.0'), [])
+  await start($)
+  await $.command.run({ command: 'agentes', args: 'estruturas' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'est-dep-tela' })).toBeDefined()
   await ui.unmount()
 })

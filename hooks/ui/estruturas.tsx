@@ -34,6 +34,7 @@ import { comandoDe } from '../lib/dependencias'
 import { CATEGORIAS, ESTRUTURAS, estruturaPorId } from '../lib/estruturas/index'
 import { SQUAD_VERSAO_PADRAO, agenteMarkdown, fluxoMarkdown } from '../lib/estruturas/protocolo'
 import type { LocalTemplate, Structure, StructureRole } from '../lib/estruturas/tipos'
+import { abrirDependencias } from '../requisitos'
 import { edicaoView } from './estruturas-edicao'
 import { type Ctx, type Dollar, type Kit, field, picker, toggleButton, truncate } from './kit'
 
@@ -471,6 +472,7 @@ const ESTADO_DEP: Record<DepInfo['estado'], { simbolo: string; cor: string }> = 
   faltando: { simbolo: '✗', cor: 'error' },
   local: { simbolo: '●', cor: 'subtle' },
   desconhecida: { simbolo: '?', cor: 'subtle' },
+  desativada: { simbolo: '⏸', cor: 'warning' },
 }
 
 /** Versão que aparece ao lado do nome do plugin, conforme o estado. */
@@ -479,17 +481,20 @@ function versaoDe(dep: DepInfo): string {
   if (dep.estado === 'desatualizada') return `${dep.instalada} → ${dep.ultima}`
   if (dep.estado === 'faltando') return 'não instalado'
   if (dep.estado === 'local') return `${dep.instalada} · pasta local`
+  if (dep.estado === 'desativada') return `${dep.instalada} · desativado`
   return dep.instalada || '?'
 }
 
-/** Linha de título: o que precisa de atenção; se nada está desatualizado nem faltando, "Os N em dia". */
+/** Linha de título: o que precisa de atenção; se nada está desatualizado, faltando nem desativado, "Os N em dia". */
 function resumoDeps(lista: readonly DepInfo[]): string {
   const desatualizados = lista.filter(dep => dep.estado === 'desatualizada').length
   const faltando = lista.filter(dep => dep.estado === 'faltando').length
-  if (desatualizados === 0 && faltando === 0) return `Os ${lista.length} em dia`
+  const desativados = lista.filter(dep => dep.estado === 'desativada').length
+  if (desatualizados === 0 && faltando === 0 && desativados === 0) return `Os ${lista.length} em dia`
   const partes: string[] = []
   if (desatualizados > 0) partes.push(`${desatualizados} com versão nova`)
   if (faltando > 0) partes.push(faltando === 1 ? '1 não instalado' : `${faltando} não instalados`)
+  if (desativados > 0) partes.push(desativados === 1 ? '1 desativado' : `${desativados} desativados`)
   return partes.join(', ')
 }
 
@@ -522,7 +527,7 @@ function linhaDependencia($: Dollar, ctx: Ctx, est: EstruturasUi, dep: DepInfo):
       <Text dimColor>{`· ${dep.para}`}</Text>
       {podeAtualizar ? (
         <Button key={`est-dep-atualizar-${dep.nome}`} onPress={() => void atualizarDependencia($, dep.id)}>
-          {dep.estado === 'faltando' ? 'Instalar' : 'Atualizar'}
+          {dep.estado === 'faltando' ? 'Instalar' : dep.estado === 'desativada' ? 'Ativar' : 'Atualizar'}
         </Button>
       ) : null}
     </Box>
@@ -534,7 +539,7 @@ function dependenciasView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement
   const { k } = ctx
   const { Box, Text, Button } = k
   const lista = est.dependencias
-  const precisaAtencao = lista.some(dep => dep.estado === 'desatualizada' || dep.estado === 'faltando')
+  const precisaAtencao = lista.some(dep => dep.estado === 'desatualizada' || dep.estado === 'faltando' || dep.estado === 'desativada')
   const aberto = precisaAtencao || est.verDeps
   const rodape = !k.canEdit ? (
     <Text dimColor>Para atualizar, abra o painel no desktop, no VS Code ou no terminal.</Text>
@@ -562,6 +567,9 @@ function dependenciasView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement
             {est.verDeps ? '▾ Ocultar' : '▸ Ver os plugins'}
           </Button>
         )}
+        <Button key="est-dep-tela" plain dimColor onPress={() => void abrirDependencias($)}>
+          Ver tudo o que eles precisam →
+        </Button>
       </Box>
       {aberto ? (
         <Box flexDirection="column" gap={1}>

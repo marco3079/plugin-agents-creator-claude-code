@@ -7,7 +7,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { DepInfo, EstruturasUi, LibraryItem, MudancaAgente, Paths, TrashItem } from '../types'
 import { finalSlug } from './lib/agent'
-import { DEPENDENCIAS, comandoDe, entradaNoCatalogo, estadoDe, marketplacesConhecidos, versaoDoManifesto, versoesInstaladas } from './lib/dependencias'
+import { DEPENDENCIAS, ativacaoDe, comandoDe, entradaNoCatalogo, estadoComAtivacao, estadoDe, marketplacesConhecidos, versaoDoManifesto, versoesInstaladas } from './lib/dependencias'
 import { baseName, joinPath, readText, removeFile, resolvePaths } from './lib/files'
 import { ID_SEGURO, agenteValido, caminhoTemplate, gravarTemplate, lerModelo, lerTemplate, pastaBiblioteca } from './lib/estruturas/biblioteca'
 import { chaveArquivo, copiaDesatualizada, fluxoMudou, idParaClone, mudancasDoTemplate, normalizarEol, templateCasa } from './lib/estruturas/deteccao'
@@ -58,7 +58,7 @@ const UI_INICIAL: EstruturasUi = {
   desatualizados: [],
 }
 
-const estruturasAtom = atom({ plugin: 'agents-creator', key: 'estruturas' } as const, UI_INICIAL, { shape: 'estruturas-3' })
+const estruturasAtom = atom({ plugin: 'agents-creator', key: 'estruturas' } as const, UI_INICIAL, { shape: 'estruturas-4' })
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
@@ -587,12 +587,19 @@ async function rodarClaude($: Dollar, args: string[], timeoutMs: number) {
   return $.process.run(['cmd.exe', '/d', '/s', '/c', 'claude', ...args], { timeoutMs })
 }
 
-/** Estado de cada plugin exigido, lido do disco (não roda o `claude`). Abre o bloco se algum está desatualizado ou falta. */
+/** Estado de cada plugin exigido, lido do disco (não roda o `claude`), com a ativação em enabledPlugins. Abre o bloco se algum está desatualizado, faltando ou desativado. */
 export async function carregarDependencias($: Dollar): Promise<void> {
   const paths = await resolvePaths($)
   const instaladas = versoesInstaladas(await readText($, joinPath(paths, pluginsDir(paths), 'installed_plugins.json')))
   const conhecidos = marketplacesConhecidos(await readText($, joinPath(paths, pluginsDir(paths), 'known_marketplaces.json')))
   const dependencias: DepInfo[] = []
+  // Os ligados (enabledPlugins) são lidos uma vez. Se não der para ler, nenhum plugin aparece como desativado.
+  let ligados: unknown = null
+  try {
+    ligados = await $.settings.read({ key: 'enabledPlugins' })
+  } catch {
+    ligados = null
+  }
   for (const dep of DEPENDENCIAS) {
     const mk = conhecidos[dep.marketplace]
     const instalada = instaladas[dep.id] ?? ''
@@ -606,6 +613,7 @@ export async function carregarDependencias($: Dollar): Promise<void> {
         ultima = versaoDoManifesto(await readText($, joinPath(paths, mk.pasta, ...segmentos, '.claude-plugin', 'plugin.json')))
       }
     }
+    const ativo = ativacaoDe(ligados, dep.id)
     dependencias.push({
       id: dep.id,
       nome: dep.nome,
@@ -614,10 +622,11 @@ export async function carregarDependencias($: Dollar): Promise<void> {
       repo: dep.repo,
       instalada,
       ultima,
-      estado: estadoDe(instalada, ultima, mk?.local === true),
+      estado: estadoComAtivacao(estadoDe(instalada, ultima, mk?.local === true), ativo),
+      ativo,
     })
   }
-  const precisa = dependencias.some(dep => dep.estado === 'desatualizada' || dep.estado === 'faltando')
+  const precisa = dependencias.some(dep => dep.estado === 'desatualizada' || dep.estado === 'faltando' || dep.estado === 'desativada')
   await update($, estruturasAtom, ui => ({ ...ui, dependencias, verDeps: ui.verDeps || precisa }))
 }
 
@@ -655,11 +664,30 @@ export async function procurarAtualizacoes($: Dollar): Promise<void> {
       const deps = (await estruturasSnapshot($)).dependencias
       const n = deps.filter(dep => dep.estado === 'desatualizada').length
       const f = deps.filter(dep => dep.estado === 'faltando').length
+      const d = deps.filter(dep => dep.estado === 'desativada').length
       const faltam = f === 1 ? 'Falta 1 plugin para instalar: use o botão Instalar.' : `Faltam ${f} plugins para instalar: use o botão Instalar.`
-      if (n > 0 && f > 0) await say($, 'warn', `Há versão nova para ${n} plugin(s). ${faltam}`)
-      else if (n > 0) await say($, 'ok', `Há versão nova para ${n} plugin(s).`)
-      else if (f > 0) await say($, 'warn', faltam)
-      else await say($, 'ok', 'Os plugins necessários estão na versão mais nova.')
+      // Uma mensagem só. Sem plugin desativado, é a de sempre; com algum, o aviso dele vem junto, com `warn`.
+      let texto: string
+      let tipo: 'ok' | 'warn'
+      if (n > 0 && f > 0) {
+        texto = `Há versão nova para ${n} plugin(s). ${faltam}`
+        tipo = 'warn'
+      } else if (n > 0) {
+        texto = `Há versão nova para ${n} plugin(s).`
+        tipo = 'ok'
+      } else if (f > 0) {
+        texto = faltam
+        tipo = 'warn'
+      } else {
+        texto = 'Os plugins necessários estão na versão mais nova.'
+        tipo = 'ok'
+      }
+      if (d > 0) {
+        const desligados = d === 1 ? '1 plugin está desativado: use o botão Ativar.' : `${d} plugins estão desativados: use o botão Ativar.`
+        texto = n > 0 || f > 0 ? `${texto} ${desligados}` : desligados
+        tipo = 'warn'
+      }
+      await say($, tipo, texto)
     }
   } catch (error) {
     await say($, 'error', `Não consegui verificar as atualizações: ${message(error)}`)
@@ -674,7 +702,8 @@ export async function atualizarDependencia($: Dollar, id: string): Promise<void>
   const dep = ui.dependencias.find(item => item.id === id)
   const cmd = dep ? comandoDe(dep) : null
   if (!dep || cmd === null || ui.verificandoDeps) return
-  const instalar = dep.estado === 'faltando'
+  const acao = dep.estado === 'faltando' ? 'instalar' : dep.estado === 'desativada' ? 'ativar' : 'atualizar'
+  const feito = acao === 'instalar' ? 'instalado' : acao === 'ativar' ? 'ativado' : 'atualizado'
   await setEstruturas($, { verificandoDeps: true, claudeAusente: false })
   try {
     // Só a execução do claude diz se ele está ausente: um erro depois disso (ao reler as dependências) é outro erro.
@@ -688,13 +717,14 @@ export async function atualizarDependencia($: Dollar, id: string): Promise<void>
     }
     if (resultado.exitCode === 0) {
       await carregarDependencias($)
-      await say($, 'ok', `${dep.nome} ${instalar ? 'instalado' : 'atualizado'}. Rode /reload-plugins para carregar a versão nova.`)
+      const aviso = acao === 'ativar' ? `${dep.nome} ativado. Rode /reload-plugins para carregá-lo.` : `${dep.nome} ${feito}. Rode /reload-plugins para carregar a versão nova.`
+      await say($, 'ok', aviso)
     } else {
       const detalhe = (resultado.stderr || resultado.stdout).trim().slice(0, 300) || `código ${resultado.exitCode}`
-      await say($, 'error', `Não consegui ${instalar ? 'instalar' : 'atualizar'} ${dep.nome}: ${detalhe}`)
+      await say($, 'error', `Não consegui ${acao} ${dep.nome}: ${detalhe}`)
     }
   } catch (error) {
-    await say($, 'error', `Não consegui ${instalar ? 'instalar' : 'atualizar'} ${dep.nome}: ${message(error)}`)
+    await say($, 'error', `Não consegui ${acao} ${dep.nome}: ${message(error)}`)
   } finally {
     await setEstruturas($, { verificandoDeps: false })
   }
@@ -725,7 +755,7 @@ export async function atualizarTodas($: Dollar): Promise<void> {
     }
     await carregarDependencias($)
     const partes: string[] = []
-    if (feitos.length > 0) partes.push(`Atualizados ou instalados (${feitos.length}): ${feitos.join(', ')}. Rode /reload-plugins para carregar as versões novas.`)
+    if (feitos.length > 0) partes.push(`Atualizados, instalados ou ativados (${feitos.length}): ${feitos.join(', ')}. Rode /reload-plugins para carregar as versões novas.`)
     if (falharam.length > 0) partes.push(`Não consegui com ${falharam.join(', ')}.`)
     if (claudeFalhou) {
       await setEstruturas($, { claudeAusente: true })
