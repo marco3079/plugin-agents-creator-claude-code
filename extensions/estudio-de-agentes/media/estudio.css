@@ -1,0 +1,64 @@
+/* Estilos do Estúdio de Agentes na webview. Medidas de scripts/telas/renderizar.mjs, as dos prints. */
+
+/* Tema escuro (padrão) */
+:root, body.vscode-dark, body.vscode-high-contrast {
+  --texto:#e6e6e6; --dim:#9a9ca3; --borda:#3a3d45; --card:rgba(255,255,255,.015); --btn:#2b2d31; --btn-borda:#3a3d44; --btn-hover:#34363b;
+  --primario:#c8643f; --primario-texto:#ffffff; --input:#141517; --input-borda:#393c43; --ph:#6b6f76; --code-bg:#2b2d31;
+  --mono:Consolas,"Cascadia Mono",monospace;
+  --c-text:#e6e6e6; --c-inverseText:#111111; --c-inactive:#7d8590; --c-subtle:#4a4d55; --c-suggestion:#7aa7ff; --c-remember:#7aa7ff;
+  --c-success:#3fb950; --c-error:#f85149; --c-warning:#e3b341; --c-merged:#a371f7; --c-claude:#d97757; --c-permission:#b392f0; --c-planMode:#48b3a8;
+  --c-autoAccept:#b392f0; --c-promptBorder:#4a4d55; --c-bashBorder:#fd5db1; --c-ide:#47a6e6; --c-diffAdded:#3fb950; --c-diffRemoved:#f85149;
+  --c-diffAddedDimmed:#2e5c3a; --c-diffRemovedDimmed:#6e2c2c; --c-diffAddedWord:#56d364; --c-diffRemovedWord:#ff7b72;
+}
+
+/* Tema claro */
+body.vscode-light, body.vscode-high-contrast-light {
+  --texto:#1c2024; --dim:#60646c; --borda:#d9dbe1; --card:rgba(0,0,0,.015); --btn:#f0f1f3; --btn-borda:#d0d3da; --btn-hover:#e6e8eb;
+  --primario:#c8643f; --primario-texto:#ffffff; --input:#ffffff; --input-borda:#c9ccd3; --ph:#8b8d98; --code-bg:#eef0f3;
+  --c-text:#1c2024; --c-inverseText:#ffffff; --c-inactive:#60646c; --c-subtle:#b9bbc6; --c-suggestion:#2f6fd6; --c-remember:#2f6fd6; --c-success:#1a7f37;
+  --c-error:#cf222e; --c-warning:#9a6700; --c-merged:#8250df; --c-claude:#c15f3c; --c-permission:#8250df; --c-planMode:#1b7f79; --c-autoAccept:#8250df;
+  --c-promptBorder:#b9bbc6; --c-bashBorder:#d6409f; --c-ide:#1f6feb; --c-diffAdded:#1a7f37; --c-diffRemoved:#cf222e; --c-diffAddedDimmed:#d1f0da;
+  --c-diffRemovedDimmed:#ffd7d5; --c-diffAddedWord:#116329; --c-diffRemovedWord:#a40e26;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:transparent;color:var(--texto);font-family:"Segoe UI Variable Text","Segoe UI",var(--vscode-font-family, system-ui),system-ui,sans-serif;font-size:13px;line-height:1.45;padding:12px 14px 18px}
+body[data-lugar="aba"]{padding:20px 24px 28px}
+body[data-lugar="aba"] #raiz{max-width:780px;margin:0 auto}
+.carregando,.vazio{color:var(--dim)}
+.vazio code{font-family:var(--mono)}
+.box{min-width:0}
+.text{min-width:0;overflow-wrap:anywhere}
+.btn{display:inline-flex;align-items:center;gap:2px;padding:4px 11px;border-radius:8px;background:var(--btn);border:1px solid var(--btn-borda);color:var(--texto);font-size:13px;line-height:1.4;white-space:nowrap;cursor:pointer;user-select:none}
+.btn:hover{background:var(--btn-hover)}
+.btn.primary{background:var(--primario);border-color:var(--primario);color:var(--primario-texto);font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.plain{background:none;border:none;padding:0;border-radius:0}
+.btn.plain:hover{background:none;opacity:.85}
+.btn.dim{color:var(--dim)}
+.btn.primary .text[style*="var(--dim)"]{color:rgba(255,255,255,.8)!important}
+.btn:focus-visible,.input:focus{outline:1px solid var(--vscode-focusBorder,#c8643f);outline-offset:1px}
+.field{display:flex;flex-direction:column;gap:4px;width:100%}
+.label{font-size:12px;color:var(--dim)}
+.input{width:100%;background:var(--input);border:1px solid var(--input-borda);border-radius:9px;padding:7px 10px;color:var(--texto);font:inherit;overflow-wrap:anywhere}
+textarea.input{resize:vertical;white-space:pre-wrap}
+.input::placeholder{color:var(--ph)}
+.select-wrap{position:relative}
+.select-wrap::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--dim);pointer-events:none}
+select.input{appearance:none;-webkit-appearance:none;padding-right:28px;cursor:pointer}
+select.input option{background:var(--input);color:var(--texto)}
+.svg{display:block;max-width:100%;height:auto}
+.md{font-size:13px}
+.md.dim{color:var(--dim)}
+.md p{margin:4px 0}
+.md ul,.md ol{margin:4px 0;padding-left:20px}
+.md-h{font-weight:700;margin:8px 0 2px}
+.md-h1{font-size:16px}
+.md-h2{font-size:14.5px}
+.md code{font-family:var(--mono);background:var(--code-bg);border-radius:4px;padding:0 4px;font-size:12px}
+.code{font-family:var(--mono);font-size:12px;background:var(--input);border:1px solid var(--input-borda);border-radius:9px;padding:10px;white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+.box[data-hover-bg]:hover,.text[data-hover-bg]:hover,.btn[data-hover-bg]:hover{background-color:var(--hv-bg)}
+.box[data-hover-borda]:hover{border-color:var(--hv-borda)}
+.text[data-hover-cor]:hover,.btn[data-hover-cor]:hover{color:var(--hv-cor)}
+.text[data-hover-sublinhado]:hover,.btn[data-hover-sublinhado]:hover{text-decoration:underline}

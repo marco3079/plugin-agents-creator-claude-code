@@ -1,0 +1,57 @@
+{
+  "name": "estudio-de-agentes",
+  "displayName": "Estúdio de Agentes",
+  "description": "Crie, edite e organize agentes e subagentes do Claude Code num painel na barra lateral: galeria, editor, modelos, estruturas de equipe, mapa e lixeira. O mesmo estúdio do /agentes do plugin agents-creator.",
+  "version": "0.1.0",
+  "publisher": "marco3079",
+  "author": { "name": "marco3079" },
+  "license": "MIT",
+  "icon": "media/icone.png",
+  "repository": { "type": "git", "url": "https://github.com/marco3079/plugin-agents-creator-claude-code" },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "keywords": ["claude", "claude code", "agentes", "subagentes", "agents"],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "estudioDeAgentes", "title": "Estúdio de Agentes", "icon": "media/barra.svg" }
+      ]
+    },
+    "views": {
+      "estudioDeAgentes": [
+        { "id": "estudioDeAgentes.painel", "name": "Agentes", "type": "webview" }
+      ]
+    },
+    "commands": [
+      { "command": "estudioDeAgentes.novo", "title": "Novo agente", "category": "Estúdio de Agentes", "icon": "$(add)" },
+      { "command": "estudioDeAgentes.abrirEmAba", "title": "Abrir numa aba do editor", "category": "Estúdio de Agentes", "icon": "$(window)" },
+      { "command": "estudioDeAgentes.abrirNoClaude", "title": "Abrir /agentes no Claude Code", "category": "Estúdio de Agentes", "icon": "$(sparkle)" },
+      { "command": "estudioDeAgentes.atualizar", "title": "Atualizar", "category": "Estúdio de Agentes", "icon": "$(refresh)" },
+      { "command": "estudioDeAgentes.focar", "title": "Abrir o Estúdio de Agentes", "category": "Estúdio de Agentes" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "estudioDeAgentes.novo", "when": "view == estudioDeAgentes.painel", "group": "navigation@1" },
+        { "command": "estudioDeAgentes.abrirEmAba", "when": "view == estudioDeAgentes.painel", "group": "navigation@2" },
+        { "command": "estudioDeAgentes.abrirNoClaude", "when": "view == estudioDeAgentes.painel", "group": "navigation@3" },
+        { "command": "estudioDeAgentes.atualizar", "when": "view == estudioDeAgentes.painel", "group": "navigation@4" }
+      ],
+      "editor/title": [
+        { "command": "estudioDeAgentes.novo", "when": "activeWebviewPanelId == 'estudioDeAgentes.aba'", "group": "navigation@1" },
+        { "command": "estudioDeAgentes.atualizar", "when": "activeWebviewPanelId == 'estudioDeAgentes.aba'", "group": "navigation@2" }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs --teste && node --test \"test/*.test.js\" \"out-teste/*.test.mjs\"",
+    "empacotar": "node scripts/empacotar.mjs"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "3.2.1",
+    "esbuild": "0.24.2",
+    "morphdom": "2.7.4"
+  }
+}

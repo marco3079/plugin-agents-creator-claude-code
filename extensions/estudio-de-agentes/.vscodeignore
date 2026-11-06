@@ -1,0 +1,11 @@
+src/**
+test/**
+scripts/**
+out-teste/**
+previa/**
+node_modules/**
+.gitignore
+**/*.map
+*.vsix
+.claude-review/**
+package-lock.json

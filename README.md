@@ -320,6 +320,24 @@ do Claude no VS Code e digite `/agentes`: o estúdio abre ali mesmo, no painel.
 - Se você apontou o Claude do VS Code para outra pasta de configuração (`CLAUDE_CONFIG_DIR` em
   `claudeCode.environmentVariables`), instale o plugin também nessa configuração.
 
+#### Extensão Estúdio de Agentes (ícone próprio na barra lateral)
+
+Para abrir o estúdio sem passar pelo chat, instale a extensão que está em `dist/`:
+
+```bash
+code --install-extension dist/estudio-de-agentes-0.1.0.vsix
+```
+
+Depois, `Ctrl+Shift+P` → **Developer: Reload Window**. O ícone **Estúdio de Agentes** aparece na barra de
+atividades e abre as mesmas telas do `/agentes` (Galeria, Editor, Modelos, Estruturas, Mapa e Lixeira), que
+se atualizam sozinhas quando os arquivos dos agentes mudam. Os botões do topo criam um agente, abrem o
+estúdio numa aba do editor, abrem `/agentes` no Claude Code e atualizam a lista.
+
+- A extensão roda o próprio código do painel, sem conversa aberta. **Gerar**, **Melhorar com IA** e
+  **Testar agora** abrem o Claude Code com o pedido já digitado: confira e aperte Enter lá.
+- O código fica em `extensions/estudio-de-agentes`. Para gerar o `.vsix` de novo: `npm install`,
+  `npm test` e `node scripts/empacotar.mjs` nessa pasta.
+
 ### Onde os arquivos ficam
 
 - **Projeto**: `.claude/agents/<nome>.md` — vai para o git e vale para quem usar o repositório; tem
