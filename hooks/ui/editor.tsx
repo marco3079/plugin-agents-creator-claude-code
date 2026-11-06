@@ -75,22 +75,30 @@ export function editorView($: Dollar, ctx: Ctx): RenderElement {
   }
   const fields = draft.fields
   const readOnly = draft.mode === 'view' || !k.canEdit
+  // Rascunho de template: o nome só se repete dentro do próprio template (o salvar confere), não na galeria.
+  const modelo = draft.destino.tipo === 'template' ? draft.destino : null
   const final = finalize(fields)
   const issues = validate(final, {
     scope: draft.scope,
-    selfPath: draft.mode === 'edit' ? draft.originPath : '',
-    others: catalog.agents,
+    selfPath: draft.mode === 'edit' && modelo === null ? draft.originPath : '',
+    others: modelo === null ? catalog.agents : [],
   })
   const errors = issues.filter(issue => issue.level === 'error').length
   const warnings = issues.filter(issue => issue.level === 'warn').length
   const hex = colorHex(fields.color)
   const title = draft.mode === 'new' ? 'Novo agente' : draft.mode === 'view' ? 'Agente de plugin' : 'Editando'
+  const rotuloSalvar = modelo ? 'Salvar no template' : draft.mode === 'new' ? 'Criar agente' : 'Salvar'
   const promptLines = fields.prompt ? fields.prompt.split('\n').length : 0
   const toolsBadge = fields.tools === null ? 'herda todas' : `${fields.tools.length} selecionadas`
   const checkBadge = errors > 0 ? `${errors} erro(s)` : warnings > 0 ? `${warnings} aviso(s)` : 'ok'
 
   return (
     <Box flexDirection="column" gap={1}>
+      {modelo ? (
+        <Box borderStyle="round" borderColor="claude" paddingX={1}>
+          <Text color="claude" weight="bold">{`Agente do template ${modelo.titulo}`}</Text>
+        </Box>
+      ) : null}
       <Box flexDirection="row" gap={1} alignItems="center" flexWrap="wrap">
         <Button key="ed-voltar" plain onPress={() => void back($)}>
           ← Voltar
@@ -99,10 +107,10 @@ export function editorView($: Dollar, ctx: Ctx): RenderElement {
         <Text color={hex} weight="bold">
           {fields.name || 'sem-nome'}
         </Text>
-        {draft.dirty ? <Text color="warning">● não salvo</Text> : draft.mode === 'edit' ? <Text color="success">✓ salvo</Text> : null}
+        {draft.dirty ? <Text color="warning">● não salvo</Text> : draft.mode === 'edit' ? <Text color="success">{modelo ? '✓ salvo no template' : '✓ salvo'}</Text> : null}
         {draft.dirty && !readOnly ? (
           <Button key="ed-salvar-topo" variant="primary" onPress={() => void save($)}>
-            {draft.mode === 'new' ? 'Criar agente' : 'Salvar'}
+            {rotuloSalvar}
           </Button>
         ) : null}
       </Box>
@@ -113,7 +121,7 @@ export function editorView($: Dollar, ctx: Ctx): RenderElement {
       {section($, ctx, 'ferramentas', 'Ferramentas', true, () => tools($, ctx, draft, readOnly), toolsBadge)}
       {section($, ctx, 'prompt', 'Prompt do sistema', true, () => prompt($, ctx, draft, readOnly), `${promptLines} linhas`)}
       {section($, ctx, 'avancado', 'Avançado', false, () => advanced($, ctx, draft, readOnly))}
-      {section($, ctx, 'arquivo', 'Arquivo e destino', false, () => file($, ctx, draft, readOnly), displayPath(catalog.paths, targetPath(catalog, draft, final)))}
+      {section($, ctx, 'arquivo', 'Arquivo e destino', false, () => file($, ctx, draft, readOnly), modelo ? modelo.titulo : displayPath(catalog.paths, targetPath(catalog, draft, final)))}
       {draft.mode !== 'view' && k.canEdit ? section($, ctx, 'testar', 'Testar agora', false, () => testing($, ctx)) : null}
       {section($, ctx, 'verificacao', 'Verificação', true, () => checks($, ctx, issues), checkBadge)}
       {actionBar($, ctx, draft, errors)}
@@ -587,6 +595,7 @@ function file($: Dollar, ctx: Ctx, draft: Draft, readOnly: boolean): RenderEleme
   const { Box, Text, Button, Code } = k
   if (!catalog) return <Text dimColor>Carregando…</Text>
   const fields = finalize(draft.fields)
+  const modelo = draft.destino.tipo === 'template' ? draft.destino : null
   const target = targetPath(catalog, draft, fields)
   const isSaved = draft.mode === 'edit'
   const isMoving = isSaved && !draft.originId.startsWith(`${draft.scope}:`)
@@ -600,14 +609,16 @@ function file($: Dollar, ctx: Ctx, draft: Draft, readOnly: boolean): RenderEleme
     <Box flexDirection="column" gap={1}>
       {draft.mode === 'view' ? (
         <Text dimColor>{`Arquivo do plugin: ${displayPath(catalog.paths, draft.originPath)}`}</Text>
+      ) : modelo ? (
+        <Text dimColor>{`Salva no template "${modelo.titulo}" como ${fields.name || 'novo-agente'}.md. Nada é gravado na pasta de agentes.`}</Text>
       ) : (
         picker(k, 'ed-escopo', 'Salvar em', scopes, draft.scope, readOnly, value => patchDraft($, { scope: value === 'user' ? 'user' : 'project', dirty: true }))
       )}
-      {draft.mode === 'view' ? null : <Text dimColor>{`${isMoving ? 'Será movido para' : 'Arquivo'}: ${displayPath(catalog.paths, target)}`}</Text>}
-      {isSaved && !readOnly
+      {draft.mode === 'view' || modelo ? null : <Text dimColor>{`${isMoving ? 'Será movido para' : 'Arquivo'}: ${displayPath(catalog.paths, target)}`}</Text>}
+      {isSaved && !readOnly && !modelo
         ? toggleButton(k, 'ed-principal', 'Usar como agente principal neste projeto', isMain, () => setMainAgent($, isMain ? '' : draft.originName))
         : null}
-      {isSaved ? (
+      {isSaved && !modelo ? (
         <Text dimColor>
           {`Agente principal: a conversa inteira roda com o prompt, o modelo e as ferramentas dele (grava "agent" em .claude/settings.local.json). Para uma sessão só: claude --agent ${draft.originName}`}
         </Text>
@@ -709,22 +720,24 @@ function actionBar($: Dollar, ctx: Ctx, draft: Draft, errors: number): RenderEle
       </Box>
     )
   }
+  // Rascunho de template: sem Duplicar nem Excluir (o agente vive no template, não tem arquivo próprio).
+  const modelo = draft.destino.tipo === 'template'
   return (
     <Box flexDirection="row" gap={1} flexWrap="wrap" alignItems="center">
       <Button key="ed-salvar" variant="primary" onPress={() => void save($)}>
-        {draft.mode === 'new' ? 'Criar agente' : 'Salvar'}
+        {modelo ? 'Salvar no template' : draft.mode === 'new' ? 'Criar agente' : 'Salvar'}
       </Button>
       {draft.dirty ? (
         <Button key="ed-descartar" onPress={() => void revert($)}>
           Descartar alterações
         </Button>
       ) : null}
-      {draft.mode === 'edit' ? (
+      {draft.mode === 'edit' && !modelo ? (
         <Button key="ed-duplicar" onPress={() => void duplicate($)}>
           Duplicar
         </Button>
       ) : null}
-      {draft.mode === 'edit' ? (
+      {draft.mode === 'edit' && !modelo ? (
         <Button key="ed-excluir" onPress={() => void setFlags($, { confirm: 'delete' })}>
           Excluir
         </Button>

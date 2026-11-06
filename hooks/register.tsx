@@ -73,12 +73,11 @@ export const register: Register = on => {
 
   on('command.run', { command: 'agentes' }, async ($, e) => {
     const text = await openStudio($, e.args)
-    if (/^\s*(estruturas|equipes)\b/i.test(e.args)) {
-      try {
-        await carregarEstruturas($)
-      } catch {
-        // a aba oferece o botão "Carregar" de novo
-      }
+    try {
+      // Relê o disco: o template ativo (etiqueta na Galeria) e, na aba Estruturas, o catálogo e Meus templates.
+      await carregarEstruturas($)
+    } catch {
+      // a aba oferece o botão "Carregar" de novo
     }
     return { text }
   }).catch(() => ({
@@ -87,12 +86,11 @@ export const register: Register = on => {
 
   on('tool.call', { tool: 'mcp__agents-creator__open_agents_studio' }, async ($, e) => {
     const result = await openFromTool($, { ...e })
-    if (e.view === 'estruturas') {
-      try {
-        await carregarEstruturas($)
-      } catch {
-        // a aba oferece o botão "Carregar" de novo
-      }
+    try {
+      // Igual ao /agentes, qualquer que seja a tela pedida: relê o disco das estruturas.
+      await carregarEstruturas($)
+    } catch {
+      // a aba oferece o botão "Carregar" de novo
     }
     return { result }
   }).catch(() => ({

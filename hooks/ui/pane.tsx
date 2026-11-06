@@ -3,7 +3,8 @@
 import type { RenderElement } from 'claude-code'
 
 import { refresh, snapshot } from '../actions'
-import { estruturasSnapshot } from '../estruturas'
+import { estruturasSnapshot, modeloEmEdicao } from '../estruturas'
+import { estruturaPorId } from '../lib/estruturas/index'
 import { baseName } from '../lib/files'
 import { editorView } from './editor'
 import { estruturasView } from './estruturas'
@@ -11,8 +12,18 @@ import { type Ctx, type Dollar, type Kit, banner, nav, statusBar } from './kit'
 import { listView } from './list'
 import { generateView, mapView, templatesView, trashView } from './screens'
 
+/** Template ativo do projeto para a etiqueta 📦 da Galeria; null sem template ativo ou sem nome para ele. */
+async function estruturaAtiva($: Dollar): Promise<Ctx['estrutura']> {
+  const ui = await estruturasSnapshot($)
+  if (ui.ativo === '') return null
+  // O nome vem de Meus templates; se o template não está lá, da estrutura do catálogo com o mesmo id.
+  const fonte = ui.biblioteca.find(item => item.id === ui.ativo) ?? estruturaPorId(ui.ativo)
+  if (fonte === undefined) return null
+  return { titulo: fonte.title, icone: fonte.icon, arquivos: ui.arquivosAtivos }
+}
+
 export async function renderPane($: Dollar, k: Kit): Promise<RenderElement> {
-  const ctx: Ctx = { k, ...(await snapshot($)) }
+  const ctx: Ctx = { k, ...(await snapshot($)), estrutura: await estruturaAtiva($) }
   const { Box, Button } = k
   const { view, catalog, running } = ctx
 
@@ -36,7 +47,7 @@ export async function renderPane($: Dollar, k: Kit): Promise<RenderElement> {
             : view === 'lixeira'
               ? trashView($, ctx)
               : view === 'estruturas'
-                ? estruturasView($, ctx, await estruturasSnapshot($))
+                ? estruturasView($, ctx, await estruturasSnapshot($), await modeloEmEdicao($))
                 : listView($, ctx)
 
   return (

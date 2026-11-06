@@ -198,5 +198,6 @@ export function templateDaEstrutura(structure: Structure, version: string, now: 
     createdAt: now,
     agents: structure.roles.map(role => ({ file: role.name + '.md', content: agenteMarkdown(role, structure, version) })),
     claudeMd: fluxoMarkdown(structure, version),
+    base: '',
   }
 }

@@ -1,25 +1,40 @@
-// Aba "Estruturas": o catálogo de templates de equipes, a biblioteca local ("Meus templates") e o
-// template ativo do projeto. As ações (baixar, trocar, remover, salvar, apagar) ficam em ../estruturas.
+// Aba "Estruturas": o catálogo de templates de equipes, a biblioteca local ("Meus templates", com o editor
+// de cada template) e o template ativo do projeto. As ações (baixar, trocar, remover, salvar, apagar, editar,
+// clonar) ficam em ../estruturas.
 
 import type { RenderElement } from 'claude-code'
 
-import type { EstruturasUi, LibraryItem } from '../../types'
+import type { DepInfo, EstruturasUi, LibraryItem } from '../../types'
 import {
+  abrirEdicao,
   apagarDaBiblioteca,
   aplicarTemplate,
+  aplicarTemplateNoProjeto,
+  atualizarCopia,
+  atualizarDependencia,
+  atualizarTemplateComProjeto,
+  atualizarTodas,
   baixarDoCatalogo,
+  cancelarClone,
   carregarEstruturas,
+  confirmarClone,
   conflitosDe,
+  iniciarClone,
+  procurarAtualizacoes,
+  removerAgenteDoTemplate,
   removerDoProjeto,
   salvarComoTemplate,
   selecionar,
   setEstruturas,
+  setNomeClone,
   voltar,
 } from '../estruturas'
 import { colorHex, modelLabel, toolsSummary } from '../lib/catalog'
+import { comandoDe } from '../lib/dependencias'
 import { CATEGORIAS, ESTRUTURAS, estruturaPorId } from '../lib/estruturas/index'
 import { SQUAD_VERSAO_PADRAO, agenteMarkdown, fluxoMarkdown } from '../lib/estruturas/protocolo'
-import type { Structure, StructureRole } from '../lib/estruturas/tipos'
+import type { LocalTemplate, Structure, StructureRole } from '../lib/estruturas/tipos'
+import { edicaoView } from './estruturas-edicao'
 import { type Ctx, type Dollar, type Kit, field, picker, toggleButton, truncate } from './kit'
 
 const ICONES = ['🧩', '🛠️', '⚖️', '📈', '🎬', '🎓', '🔬', '📡', '🛡️', '🎧', '🎮', '🤖'].map(icone => ({ value: icone, label: icone }))
@@ -78,6 +93,13 @@ function pedidoDe($: Dollar, est: EstruturasUi): Pedido | null {
       executar: () => apagarDaBiblioteca($, alvo),
     }
   }
+  if (est.confirmar === 'remover-agente') {
+    return {
+      pergunta: `Tirar "${alvo}" do template? O projeto não muda.`,
+      rotulo: 'Remover',
+      executar: () => removerAgenteDoTemplate($, alvo),
+    }
+  }
   return null
 }
 
@@ -97,6 +119,30 @@ function confirmacaoView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement 
             {pedido.rotulo}
           </Button>
           <Button key="est-confirmar-nao" onPress={() => void setEstruturas($, { confirmar: '', alvoConfirmacao: '' })}>
+            Cancelar
+          </Button>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+/** Caixa para dar o nome da cópia antes de clonar uma estrutura padrão. Só com canEdit: clonar grava em Meus templates. */
+function caixaClone($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement | null {
+  const { k } = ctx
+  const { Box, Button } = k
+  if (!k.canEdit) return null
+  return (
+    <Box flexDirection="column" gap={1} borderStyle="round" borderColor="claude" paddingX={1}>
+      {field(k, 'est-nome-clone', 'Nome', est.nomeClone, {}, valor => setNomeClone($, valor))}
+      {est.ocupado ? (
+        trabalhando(k)
+      ) : (
+        <Box flexDirection="row" gap={1} flexWrap="wrap">
+          <Button key="est-clone-ok" variant="primary" onPress={() => void confirmarClone($)}>
+            Criar e editar
+          </Button>
+          <Button key="est-clone-cancelar" onPress={() => void cancelarClone($)}>
             Cancelar
           </Button>
         </Box>
@@ -256,8 +302,14 @@ function detalheView($: Dollar, ctx: Ctx, est: EstruturasUi, estrutura: Structur
           <Button key="est-so-salvar" onPress={() => void baixarDoCatalogo($, estrutura.id, false)}>
             Só salvar em Meus templates
           </Button>
+          {est.clonando === estrutura.id ? null : (
+            <Button key="est-clonar" onPress={() => void iniciarClone($, estrutura.id)}>
+              Clonar
+            </Button>
+          )}
         </Box>
       )}
+      {est.clonando === estrutura.id ? caixaClone($, ctx, est) : null}
     </Box>
   )
 }
@@ -267,6 +319,8 @@ function cartaoBiblioteca($: Dollar, ctx: Ctx, est: EstruturasUi, item: LibraryI
   const { k } = ctx
   const { Box, Text, Button } = k
   const ativo = est.ativo === item.id
+  const desatualizado = est.desatualizados.includes(item.id)
+  const clonando = est.clonando === item.id && item.origin === 'catalogo'
   return (
     <Box
       key={`est-lib-${item.id}`}
@@ -280,10 +334,22 @@ function cartaoBiblioteca($: Dollar, ctx: Ctx, est: EstruturasUi, item: LibraryI
         <Text weight="bold">{item.title}</Text>
         <Text dimColor>{item.origin === 'catalogo' ? ' · do catálogo' : ' · seu'}</Text>
         {ativo ? <Text color="success"> · ATIVO</Text> : null}
+        {desatualizado ? <Text color="warning">· versão nova</Text> : null}
+        {k.canEdit && item.origin === 'proprio' ? (
+          <Button key={`est-editar-${item.id}`} plain onPress={() => void abrirEdicao($, item.id)}>
+            ✏️ Editar
+          </Button>
+        ) : null}
+        {k.canEdit && item.origin === 'catalogo' && !clonando ? (
+          <Button key={`est-clonar-lib-${item.id}`} plain onPress={() => void iniciarClone($, item.id)}>
+            Clonar para editar
+          </Button>
+        ) : null}
       </Box>
       <Text dimColor>{item.summary}</Text>
       <Text dimColor>{truncate(`${item.agents.length} agentes: ${item.agents.join(', ')}`, 200)}</Text>
       <Text dimColor>{`Salvo em ${formatDate(item.createdAt)}`}</Text>
+      {clonando ? caixaClone($, ctx, est) : null}
       {est.ocupado ? (
         trabalhando(k)
       ) : (
@@ -301,6 +367,11 @@ function cartaoBiblioteca($: Dollar, ctx: Ctx, est: EstruturasUi, item: LibraryI
               Usar neste projeto
             </Button>
           )}
+          {desatualizado && k.canEdit ? (
+            <Button key={`est-atualizar-copia-${item.id}`} onPress={() => void atualizarCopia($, item.id)}>
+              Atualizar
+            </Button>
+          ) : null}
           <Button key={`est-apagar-${item.id}`} plain dimColor onPress={() => void setEstruturas($, { confirmar: 'apagar', alvoConfirmacao: item.id })}>
             Apagar
           </Button>
@@ -343,7 +414,173 @@ function bibliotecaView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement {
   )
 }
 
-export function estruturasView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement {
+/** Aviso no topo da aba: o que mudou no projeto desde o template ativo (e o fluxo), com as ações para levar a mudança a um dos lados. */
+function avisoMudancasView($: Dollar, ctx: Ctx, est: EstruturasUi, emEdicao: boolean): RenderElement | null {
+  const ativo = est.biblioteca.find(item => item.id === est.ativo)
+  if (ativo === undefined || (est.mudancas.length === 0 && !est.fluxoMudou)) return null
+  const { k } = ctx
+  const { Box, Text, Button } = k
+  const linhas = [...est.mudancas.map(mudanca => `${mudanca.file} (${mudanca.tipo})`), ...(est.fluxoMudou ? ['fluxo do CLAUDE.md'] : [])]
+  return (
+    <Box flexDirection="column" gap={1} borderStyle="round" borderColor="warning" paddingX={1}>
+      <Text weight="bold">Mudou desde o template:</Text>
+      {linhas.map(linha => (
+        <Text>{`• ${linha}`}</Text>
+      ))}
+      {est.ocupado ? (
+        trabalhando(k)
+      ) : emEdicao ? (
+        // Com um template aberto, as ações ficariam fora de sincronia com o editor: só depois de voltar.
+        <Text dimColor>Volte da edição do template para atualizar ou aplicar.</Text>
+      ) : k.canEdit ? (
+        <Box flexDirection="row" gap={1} flexWrap="wrap">
+          {ativo.origin === 'proprio' ? (
+            <Button key="est-atualizar-template" variant="primary" onPress={() => void atualizarTemplateComProjeto($)}>
+              Atualizar o template com o projeto
+            </Button>
+          ) : (
+            <Button
+              key="est-salvar-como-seu"
+              variant="primary"
+              onPress={() =>
+                void setEstruturas($, {
+                  aba: 'biblioteca',
+                  titulo: `${ativo.title} (minha versão)`,
+                  selecionado: '',
+                  confirmar: '',
+                  alvoConfirmacao: '',
+                })
+              }
+            >
+              Salvar como template seu
+            </Button>
+          )}
+          <Button key="est-aplicar-template" onPress={() => void aplicarTemplateNoProjeto($)}>
+            Aplicar o template no projeto
+          </Button>
+        </Box>
+      ) : null}
+    </Box>
+  )
+}
+
+/** Símbolo e cor de cada estado de um plugin necessário. */
+const ESTADO_DEP: Record<DepInfo['estado'], { simbolo: string; cor: string }> = {
+  atual: { simbolo: '✓', cor: 'success' },
+  desatualizada: { simbolo: '↑', cor: 'warning' },
+  faltando: { simbolo: '✗', cor: 'error' },
+  local: { simbolo: '●', cor: 'subtle' },
+  desconhecida: { simbolo: '?', cor: 'subtle' },
+}
+
+/** Versão que aparece ao lado do nome do plugin, conforme o estado. */
+function versaoDe(dep: DepInfo): string {
+  if (dep.estado === 'atual') return dep.instalada
+  if (dep.estado === 'desatualizada') return `${dep.instalada} → ${dep.ultima}`
+  if (dep.estado === 'faltando') return 'não instalado'
+  if (dep.estado === 'local') return `${dep.instalada} · pasta local`
+  return dep.instalada || '?'
+}
+
+/** Linha de título: o que precisa de atenção; se nada está desatualizado nem faltando, "Os N em dia". */
+function resumoDeps(lista: readonly DepInfo[]): string {
+  const desatualizados = lista.filter(dep => dep.estado === 'desatualizada').length
+  const faltando = lista.filter(dep => dep.estado === 'faltando').length
+  if (desatualizados === 0 && faltando === 0) return `Os ${lista.length} em dia`
+  const partes: string[] = []
+  if (desatualizados > 0) partes.push(`${desatualizados} com versão nova`)
+  if (faltando > 0) partes.push(faltando === 1 ? '1 não instalado' : `${faltando} não instalados`)
+  return partes.join(', ')
+}
+
+/** Comandos para o terminal, para quando o `claude` não roda aqui: um `marketplace update` por marketplace não local e um `update`/`install` por plugin. */
+function comandosManuais(lista: readonly DepInfo[]): string[] {
+  // Marketplace local: algum plugin dele está como 'local' (pasta do desenvolvedor). Esses não são atualizados.
+  const locais = new Set(lista.filter(dep => dep.estado === 'local').map(dep => dep.marketplace))
+  const marketplaces = lista
+    .map(dep => dep.marketplace)
+    .filter((nome, i, todos) => nome !== '' && !locais.has(nome) && todos.indexOf(nome) === i)
+  const linhas = marketplaces.map(nome => ['claude', 'plugin', 'marketplace', 'update', nome].join(' '))
+  for (const dep of lista) {
+    const comando = comandoDe(dep)
+    if (comando !== null) linhas.push(comando.join(' '))
+  }
+  return linhas
+}
+
+/** Uma linha por plugin: símbolo do estado, nome, versão, para que serve e o botão Instalar/Atualizar. */
+function linhaDependencia($: Dollar, ctx: Ctx, est: EstruturasUi, dep: DepInfo): RenderElement {
+  const { k } = ctx
+  const { Box, Text, Button } = k
+  const { simbolo, cor } = ESTADO_DEP[dep.estado]
+  const podeAtualizar = comandoDe(dep) !== null && k.canEdit && !est.verificandoDeps
+  return (
+    <Box key={`est-dep-${dep.nome}`} flexDirection="row" gap={1} flexWrap="wrap">
+      <Text color={cor}>{simbolo}</Text>
+      <Text weight="bold">{dep.nome}</Text>
+      <Text dimColor>{versaoDe(dep)}</Text>
+      <Text dimColor>{`· ${dep.para}`}</Text>
+      {podeAtualizar ? (
+        <Button key={`est-dep-atualizar-${dep.nome}`} onPress={() => void atualizarDependencia($, dep.id)}>
+          {dep.estado === 'faltando' ? 'Instalar' : 'Atualizar'}
+        </Button>
+      ) : null}
+    </Box>
+  )
+}
+
+/** Bloco "Plugins necessários": a versão de cada plugin do estúdio e como atualizar. Abre sozinho se algo precisa de atenção. */
+function dependenciasView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderElement {
+  const { k } = ctx
+  const { Box, Text, Button } = k
+  const lista = est.dependencias
+  const precisaAtencao = lista.some(dep => dep.estado === 'desatualizada' || dep.estado === 'faltando')
+  const aberto = precisaAtencao || est.verDeps
+  const rodape = !k.canEdit ? (
+    <Text dimColor>Para atualizar, abra o painel no desktop, no VS Code ou no terminal.</Text>
+  ) : est.verificandoDeps ? (
+    <Text color="claude">⏳ Verificando…</Text>
+  ) : (
+    <Box flexDirection="row" gap={1} flexWrap="wrap">
+      <Button key="est-dep-procurar" onPress={() => void procurarAtualizacoes($)}>
+        Procurar atualizações
+      </Button>
+      {lista.some(dep => comandoDe(dep) !== null) ? (
+        <Button key="est-dep-todas" variant="primary" onPress={() => void atualizarTodas($)}>
+          Atualizar todos
+        </Button>
+      ) : null}
+    </Box>
+  )
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Box flexDirection="row" gap={1} flexWrap="wrap">
+        <Text weight="bold">Plugins necessários</Text>
+        <Text dimColor>{resumoDeps(lista)}</Text>
+        {precisaAtencao ? null : (
+          <Button key="est-dep-ver" plain dimColor onPress={() => void setEstruturas($, { verDeps: !est.verDeps })}>
+            {est.verDeps ? '▾ Ocultar' : '▸ Ver os plugins'}
+          </Button>
+        )}
+      </Box>
+      {aberto ? (
+        <Box flexDirection="column" gap={1}>
+          {lista.map(dep => linhaDependencia($, ctx, est, dep))}
+          {rodape}
+          {est.claudeAusente ? (
+            <Box flexDirection="column">
+              {comandosManuais(lista).map(comando => (
+                <Text dimColor>{comando}</Text>
+              ))}
+            </Box>
+          ) : null}
+        </Box>
+      ) : null}
+    </Box>
+  )
+}
+
+export function estruturasView($: Dollar, ctx: Ctx, est: EstruturasUi, edicao: LocalTemplate | null): RenderElement {
   const { k } = ctx
   const { Box, Text, Button } = k
   if (!est.carregado) {
@@ -358,6 +595,8 @@ export function estruturasView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderEl
   }
   // Sem estrutura encontrada para o id selecionado, a aba volta à lista do catálogo.
   const detalhe = est.aba === 'catalogo' && est.selecionado ? estruturaPorId(est.selecionado) : undefined
+  // Template aberto no editor: as abas somem e a tela dele (edicaoView, em estruturas-edicao) substitui as listas.
+  const editor = edicao !== null && edicao.id === est.editando ? edicao : null
   const remover = est.ativo === '' ? null : est.ocupado ? (
     trabalhando(k)
   ) : (
@@ -367,38 +606,44 @@ export function estruturasView($: Dollar, ctx: Ctx, est: EstruturasUi): RenderEl
   )
   return (
     <Box flexDirection="column" gap={1}>
-      <Box flexDirection="row" gap={1} flexWrap="wrap">
-        <Button
-          key="est-aba-catalogo"
-          variant={est.aba === 'catalogo' ? 'primary' : 'secondary'}
-          onPress={() => void setEstruturas($, { aba: 'catalogo', selecionado: '', confirmar: '', alvoConfirmacao: '' })}
-        >
-          {`Catálogo (${ESTRUTURAS.length})`}
-        </Button>
-        <Button
-          key="est-aba-biblioteca"
-          variant={est.aba === 'biblioteca' ? 'primary' : 'secondary'}
-          onPress={() => void setEstruturas($, { aba: 'biblioteca', selecionado: '', confirmar: '', alvoConfirmacao: '' })}
-        >
-          {`Meus templates (${est.biblioteca.length})`}
-        </Button>
-      </Box>
+      {editor === null ? (
+        <Box flexDirection="row" gap={1} flexWrap="wrap">
+          <Button
+            key="est-aba-catalogo"
+            variant={est.aba === 'catalogo' ? 'primary' : 'secondary'}
+            onPress={() => void setEstruturas($, { aba: 'catalogo', selecionado: '', confirmar: '', alvoConfirmacao: '', clonando: '' })}
+          >
+            {`Catálogo (${ESTRUTURAS.length})`}
+          </Button>
+          <Button
+            key="est-aba-biblioteca"
+            variant={est.aba === 'biblioteca' ? 'primary' : 'secondary'}
+            onPress={() => void setEstruturas($, { aba: 'biblioteca', selecionado: '', confirmar: '', alvoConfirmacao: '', clonando: '' })}
+          >
+            {`Meus templates (${est.biblioteca.length})`}
+          </Button>
+        </Box>
+      ) : null}
       <Box flexDirection="row" gap={1} flexWrap="wrap" alignItems="center">
         {est.ativo ? <Text>{`Ativo neste projeto: ${nomeDe(est, est.ativo)}`}</Text> : <Text dimColor>Nenhum template ativo neste projeto</Text>}
         {remover}
       </Box>
+      {avisoMudancasView($, ctx, est, editor !== null)}
       {est.squadVersao === '' ? (
         <Box flexDirection="column" borderStyle="round" borderColor="warning" paddingX={1}>
           <Text>⚠ O plugin squad-stream não está instalado: as equipes conversam pela sala dele.</Text>
           <Text dimColor>{'Ele vem como dependência do estúdio: adicione o marketplace marco3079/skill-squad-room (no app desktop, + → Plugins → Add marketplace; no terminal, /plugin marketplace add marco3079/skill-squad-room) e rode /reload-plugins.'}</Text>
         </Box>
       ) : null}
+      {editor === null && est.carregado && est.dependencias.length > 0 ? dependenciasView($, ctx, est) : null}
       {confirmacaoView($, ctx, est)}
-      {est.aba === 'biblioteca'
-        ? bibliotecaView($, ctx, est)
-        : detalhe
-          ? detalheView($, ctx, est, detalhe)
-          : catalogoView($, ctx, est)}
+      {editor !== null
+        ? edicaoView($, ctx, est, editor)
+        : est.aba === 'biblioteca'
+          ? bibliotecaView($, ctx, est)
+          : detalhe
+            ? detalheView($, ctx, est, detalhe)
+            : catalogoView($, ctx, est)}
     </Box>
   )
 }

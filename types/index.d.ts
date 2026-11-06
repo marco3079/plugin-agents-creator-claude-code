@@ -73,6 +73,9 @@ export type Catalog = {
   scannedAt: number
 }
 
+/** Para onde o rascunho vai ao salvar: a pasta de agentes, ou um agente de um template da biblioteca. */
+export type DestinoRascunho = { tipo: 'arquivo' } | { tipo: 'template'; templateId: string; file: string; titulo: string }
+
 /** O agente aberto no editor. */
 export type Draft = {
   /** `view`: agente de plugin, aberto só para leitura (pode ser copiado). */
@@ -93,6 +96,8 @@ export type Draft = {
   eol: string
   /** Texto cru de campos digitados como lista (skills, ferramenta extra...), como o usuário digitou. */
   buffers: Record<string, string>
+  /** Destino ao salvar: a pasta de agentes ou um agente de um template da biblioteca. */
+  destino: DestinoRascunho
 }
 
 export type StatusKind = 'info' | 'ok' | 'warn' | 'error'
@@ -134,8 +139,17 @@ export type TrashItem = {
 
 export type LiveTool = { name: string; mcp: boolean }
 
-/** Um template em Meus templates (biblioteca local): só o resumo, sem o conteúdo dos agentes. */
-export type LibraryItem = { id: string; title: string; icon: string; summary: string; origin: 'catalogo' | 'proprio'; createdAt: number; agents: string[] }
+/** Um template em Meus templates (biblioteca local): só o resumo, sem o conteúdo dos agentes. `base`: id da estrutura do catálogo de origem, ou ''. */
+export type LibraryItem = { id: string; title: string; icon: string; summary: string; origin: 'catalogo' | 'proprio'; createdAt: number; agents: string[]; base: string }
+
+/** Estado de um plugin exigido: `local` é pasta do desenvolvedor (não é comparada com o catálogo). */
+export type EstadoDependencia = 'atual' | 'desatualizada' | 'faltando' | 'local' | 'desconhecida'
+
+/** Um plugin exigido pelo agents-creator. `instalada` vazia: não instalado; `ultima` vazia: versão do catálogo desconhecida. */
+export type DepInfo = { id: string; nome: string; para: string; marketplace: string; repo: string; instalada: string; ultima: string; estado: EstadoDependencia }
+
+/** Um agente do template ativo que mudou no projeto: `alterado` (conteúdo diferente) ou `faltando` (não está no projeto). */
+export type MudancaAgente = { file: string; tipo: 'alterado' | 'faltando' }
 
 /** Estado da aba Estruturas: catálogo, biblioteca local e o template ativo deste projeto. */
 export type EstruturasUi = {
@@ -144,7 +158,7 @@ export type EstruturasUi = {
   selecionado: string
   origemSelecionado: 'catalogo' | 'biblioteca'
   sobrescrever: boolean
-  confirmar: '' | 'aplicar' | 'remover' | 'apagar'
+  confirmar: '' | 'aplicar' | 'remover' | 'apagar' | 'remover-agente'
   alvoConfirmacao: string
   verAgente: string
   verFluxo: boolean
@@ -159,6 +173,33 @@ export type EstruturasUi = {
   /** Caminhos dos agentes do template ativo, relativos ao projeto, com '/'. */
   arquivosAtivos: string[]
   ocupado: boolean
+  /** Plugins que o agents-creator exige, com o estado de cada um neste computador. */
+  dependencias: DepInfo[]
+  /** Uma verificação ou instalação está rodando (o `claude` está em uso). */
+  verificandoDeps: boolean
+  /** O comando `claude` não conseguiu iniciar; a aba mostra o que rodar no terminal. */
+  claudeAusente: boolean
+  /** Bloco "Plugins necessários" aberto. */
+  verDeps: boolean
+  /** Id do template aberto no editor de template; '' = nenhum. */
+  editando: string
+  /** Campos do template em edição (ainda não salvos quando `edicaoSujo`). */
+  edicaoTitulo: string
+  edicaoResumo: string
+  edicaoIcone: string
+  edicaoFluxo: string
+  /** Os campos do template mudaram e não foram salvos. */
+  edicaoSujo: boolean
+  /** Id da estrutura do catálogo que está sendo clonada; '' = nenhuma. */
+  clonando: string
+  /** Nome proposto para a cópia (ex.: "<Título> (minha versão)"). */
+  nomeClone: string
+  /** Agentes do template ativo que mudaram no projeto (vazio sem template ativo ou sem mudanças). */
+  mudancas: MudancaAgente[]
+  /** O fluxo (CLAUDE.md) do template ativo mudou no projeto. */
+  fluxoMudou: boolean
+  /** Ids das cópias do catálogo que têm versão nova na estrutura padrão. */
+  desatualizados: string[]
 }
 
 declare module 'claude-code' {

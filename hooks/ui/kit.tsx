@@ -76,6 +76,8 @@ export type Ctx = {
   usage: Record<string, number>
   trash: TrashItem[]
   liveTools: LiveTool[]
+  /** Template ativo do projeto (etiqueta 📦 nos agentes que vieram dele); null sem template ativo. */
+  estrutura: { titulo: string; icone: string; arquivos: string[] } | null
 }
 
 /** Largura em pixels para os SVGs, a partir das colunas do painel. */

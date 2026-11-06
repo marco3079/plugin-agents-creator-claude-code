@@ -26,6 +26,35 @@ instala os 7 junto.
 | `squad-stream`, `squad-room-pane` | `skill-squad-room` (`marco3079/skill-squad-room`) | a sala onde os agentes do squad conversam, com painel ao vivo |
 | `popup-perguntas` | `popup-perguntas` (`marco3079/skill-popup-duvida-cloude-code`) | perguntas ao usuário num popup, com texto, imagem e arquivo |
 
+### Instalar ou atualizar tudo de uma vez
+
+No Git Bash (Windows), no macOS ou no Linux:
+
+```bash
+if [ -d "$HOME/.claude-agents-creator/repo/.git" ]; then
+  git -C "$HOME/.claude-agents-creator/repo" pull
+else
+  git clone https://github.com/marco3079/plugin-agents-creator-claude-code.git "$HOME/.claude-agents-creator/repo"
+fi
+node "$HOME/.claude-agents-creator/repo/install.js"
+```
+
+No PowerShell do Windows:
+
+```powershell
+$repo = "$env:USERPROFILE\.claude-agents-creator\repo"
+if (Test-Path "$repo\.git") { git -C $repo pull } else { git clone https://github.com/marco3079/plugin-agents-creator-claude-code.git $repo }
+node "$repo\install.js"
+```
+
+O instalador adiciona os marketplaces que faltam, instala os plugins que faltam e atualiza os que
+estiverem numa versão antiga; o que já está na versão mais nova, ou vem de uma pasta local, fica
+como está. Rode antes com `--simular` para ver o que ele faria.
+
+Também dá para pedir ao Claude:
+*instala https://github.com/marco3079/plugin-agents-creator-claude-code*. Ele segue o
+[INSTALL.md](INSTALL.md).
+
 ### No app desktop do Claude (aba Code)
 
 O comando `/plugin` não funciona no app desktop. Lá a instalação é pelo menu:
@@ -85,9 +114,9 @@ chat); foi testado no 2.1.312.
 - **`Dependency "…" is not installed`** (o estúdio fica desligado): adicione o marketplace que falta com
   `/plugin marketplace add marco3079/<repo>` (a tabela no início desta seção diz qual é o repositório) e
   rode `/reload-plugins`; o Claude Code instala as dependências que faltam. Isso também acontece ao
-  atualizar da 0.1.0: `claude plugin update` não instala as dependências novas. Rode `/reload-plugins`
-  ou instale a que falta pelo nome que a mensagem mostra, por exemplo
-  `claude plugin install diff-review@skill-diff-claude-code`.
+  atualizar da 0.1.0, porque `claude plugin update` não instala as dependências novas: rode o
+  instalador (`node install.js`, veja [Instalar ou atualizar tudo de uma vez](#instalar-ou-atualizar-tudo-de-uma-vez)),
+  que instala de uma vez as que faltam.
 - **Instalou, mas `/agentes` não aparece**: abra uma sessão nova (no terminal, `/reload-plugins`) e
   confira se o Claude Code está atualizado.
 
@@ -119,6 +148,14 @@ Um marketplace de pasta é lido da própria pasta: depois de editar os arquivos,
   <tr>
     <td width="50%" valign="top"><b>Mapa de delegação</b><br>Quem é o agente principal e para quem ele delega; ⤷ marca os orquestradores.<br><br><img src="docs/prints/mapa.png" alt="Mapa de delegação"></td>
     <td width="50%" valign="top"><b>Gerar com IA</b><br>Descreva o agente numa frase e revise o rascunho que o Claude escreve.<br><br><img src="docs/prints/gerar.png" alt="Gerar agente com IA"></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Estruturas</b><br>Dez equipes prontas para baixar no projeto, com os plugins de que elas dependem.<br><br><img src="docs/prints/estruturas.png" alt="Aba Estruturas"></td>
+    <td width="50%" valign="top"><b>Estrutura aberta</b><br>A equipe, os requisitos e o fluxo do agente principal antes de baixar.<br><br><img src="docs/prints/estruturas-detalhe.png" alt="Detalhe de uma estrutura"></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Meus templates</b><br>Os templates salvos neste usuário: Editar nos seus; nas cópias do catálogo, Clonar para editar, e Atualizar quando o catálogo tem versão nova.<br><br><img src="docs/prints/estruturas-templates.png" alt="Meus templates"></td>
+    <td width="50%" valign="top"><b>Template aberto</b><br>Edite um template seu na própria aba: nome, resumo, ícone, fluxo do CLAUDE.md e os agentes. Salvar atualiza só o template; o projeto muda quando você aplica o template.<br><br><img src="docs/prints/estruturas-edicao.png" alt="Template aberto na aba Estruturas"></td>
   </tr>
 </table>
 
@@ -162,7 +199,8 @@ app, cores e botões seguem o tema do Claude Code.</sub>
   pergunta pelo popup e os subagentes devolvem as dúvidas a ele.
 - **Estruturas de equipe**: dez equipes prontas, de desenvolvimento a pesquisa acadêmica, que você
   baixa para o projeto com o fluxo do agente principal no `CLAUDE.md`; dá também para salvar a sua
-  própria. Veja [Estruturas de agentes](#estruturas-de-agentes).
+  própria, editá-la, clonar uma estrutura padrão e atualizar o template e o projeto nos dois
+  sentidos. Veja [Estruturas de agentes](#estruturas-de-agentes).
 - **Mapa de delegação**: quem é o agente principal e para quem ele pode delegar; dá para escolher o
   agente principal do projeto ali mesmo.
 - **Lixeira**: agentes excluídos pelo estúdio ficam guardados e podem ser restaurados.
@@ -214,6 +252,43 @@ Os nomes são os dos arquivos `<nome>.md` que a estrutura grava em `.claude/agen
   O manifesto `.claude/agents-creator.json` diz qual template está ativo no projeto. Se a pasta
   `.claude/agents` for criada agora, reinicie a sessão, como descrito em
   [Onde os arquivos ficam](#onde-os-arquivos-ficam).
+- **Plugins necessários.** No topo da aba, cada um dos 7 plugins mostra a versão instalada e se há
+  versão nova. **Procurar atualizações** atualiza os catálogos dos marketplaces; **Atualizar** (ou
+  **Atualizar todos**) roda `claude plugin update`, e **Instalar**, no plugin que falta, roda
+  `claude plugin install`. Os que vêm de uma pasta local ficam como estão.
+  Depois, rode `/reload-plugins`.
+
+### Seus templates
+
+Um template que você salvou se edita. As cópias de estruturas padrão não se editam: para
+personalizar uma, clone-a.
+
+- **Editar.** No cartão de um template seu, clique em **✏️ Editar**. A tela mostra o nome, o
+  resumo, o ícone e o fluxo do `CLAUDE.md`, com **Salvar**. Se o template estiver ativo no projeto,
+  depois de salvar volte e use **Aplicar o template no projeto** para levar as mudanças para lá.
+- **Agentes do template.** Cada agente tem **Editar**, que abre o editor do estúdio; nele, o botão
+  de salvar vira **Salvar no template** e você volta ao template, sem mexer no projeto. Também dá
+  para **Remover** um agente ou criar outro com **+ Novo agente**.
+- **Clonar.** Para personalizar uma estrutura padrão, abra o detalhe dela e clique em **Clonar**. O
+  nome sugerido é `<Título> (minha versão)`; ao clicar em **Criar e editar**, a cópia vai para
+  **Meus templates** e abre no editor. Nos cartões das cópias do catálogo, o botão é
+  **Clonar para editar**.
+- **Atualizar o template com o projeto.** Se você mudou agentes ou o fluxo no projeto, este botão
+  grava as mudanças no template ativo. Num template do catálogo, no lugar dele aparece
+  **Salvar como template seu**, que leva a **Meus templates** com o nome `<Título> (minha versão)`
+  preenchido.
+- **Aplicar o template no projeto.** Leva o template ativo para `.claude/agents` e para o
+  `CLAUDE.md`. O que for trocado vai para a lixeira do estúdio.
+- **Versão nova.** Quando a estrutura padrão mudou, a cópia dela em **Meus templates** mostra
+  **versão nova**. O botão **Atualizar** troca a cópia pela versão atual, sem mexer no projeto; se
+  ela for a ativa no projeto, o aviso de mudanças oferece aplicar.
+- **Detecção.** Se os agentes do projeto são os de um template de **Meus templates**, o estúdio
+  marca esse template como ativo e registra isso no manifesto `.claude/agents-creator.json`; o mesmo
+  acontece logo depois de **Salvar como template**. Quando o projeto muda em relação ao template
+  ativo, um aviso no topo da aba lista os agentes alterados ou faltando e o fluxo do `CLAUDE.md`,
+  com os botões **Atualizar o template com o projeto** e **Aplicar o template no projeto**.
+- **Galeria.** Os agentes do projeto que vieram do template ativo ganham a etiqueta **📦**, com o
+  nome do template.
 
 ## Como usar
 
@@ -263,12 +338,15 @@ O **agente principal** (escolhido no mapa ou no editor) é gravado como `"agent"
 ## Desenvolvimento
 
 ```
+install.js                      instala ou atualiza o estúdio e os 7 plugins de que ele depende
+INSTALL.md                      instruções para o Claude instalar o estúdio
 .claude-plugin/plugin.json      manifesto, ícone (icon.png) e marketplace.json
 hooks/hooks.json                aponta para o módulo de hooks
 hooks/register.tsx              comando /agentes, ferramenta, eventos de subagentes e o painel
 hooks/actions.ts                estado da sessão e o que cada botão faz
 hooks/estruturas.ts             aba Estruturas: baixar, alternar, salvar e apagar templates de equipe
 hooks/lib/                      formato dos arquivos (YAML), varredura, IA, catálogo, SVGs, modelos
+hooks/lib/dependencias.ts       os 7 plugins e a leitura das versões instaladas
 hooks/lib/estruturas/           catálogo das 10 equipes e o protocolo da sala do squad-stream
 hooks/lib/perguntas.ts          regra de dúvidas pelo popup (popup-perguntas)
 hooks/ui/                       telas: galeria, editor, modelos, estruturas, geração, mapa e lixeira

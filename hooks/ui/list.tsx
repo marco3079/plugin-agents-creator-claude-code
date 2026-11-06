@@ -20,14 +20,23 @@ function matches(agent: AgentSummary, query: string): boolean {
   return query.split(/\s+/).every(word => haystack.includes(word))
 }
 
+/** Título do template ativo que trouxe este agente (etiqueta 📦); null se o agente não veio de um template ativo. */
+function templateDoAgente(agent: AgentSummary, estrutura: Ctx['estrutura']): string | null {
+  if (estrutura === null || agent.scope !== 'project') return null
+  // Os caminhos do estado usam '/' e não diferenciam maiúsculas (Windows e macOS).
+  const caminho = `.claude/agents/${agent.relPath}`.toLowerCase()
+  return estrutura.arquivos.some(arquivo => arquivo.toLowerCase() === caminho) ? estrutura.titulo : null
+}
+
 function card($: Dollar, ctx: Ctx, agent: AgentSummary): RenderElement {
-  const { k, catalog, running, usage } = ctx
+  const { k, catalog, running, usage, estrutura } = ctx
   const { Box, Text, Button, Svg } = k
   const hex = colorHex(agent.color)
   const isRunning = Object.values(running).includes(agent.qualifiedName)
   const uses = usage[agent.qualifiedName] ?? 0
   const main = catalog?.mainAgent ?? ''
   const isMain = main !== '' && (main === agent.qualifiedName || main === agent.name)
+  const etiqueta = templateDoAgente(agent, estrutura)
   const facts = [
     toolsSummary(agent.tools),
     uses > 0 ? `usado ${uses}×` : '',
@@ -50,6 +59,7 @@ function card($: Dollar, ctx: Ctx, agent: AgentSummary): RenderElement {
         <Text color={hex}>{modelLabel(agent.model)}</Text>
         {isRunning ? <Text color="success">● em execução</Text> : null}
         {isMain ? <Text color="claude">★ principal</Text> : null}
+        {etiqueta !== null ? <Text dimColor>{`📦 ${etiqueta}`}</Text> : null}
       </Box>
       {agent.error ? (
         <Text color="warning">{`⚠ ${agent.error}`}</Text>

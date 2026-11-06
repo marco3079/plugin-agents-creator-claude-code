@@ -20,10 +20,10 @@ import { lerDumps, paginaHtml } from './renderizar.mjs'
 const RAIZ = path.resolve(fileURLToPath(new URL('../..', import.meta.url)))
 
 // Nomes da raiz que ficam de fora da cópia do plugin usada no teste (só no primeiro nível).
-const FORA_DA_COPIA = new Set(['.git', 'docs', 'scripts', 'tests', '.claude', '.claude-review', 'CLAUDE.md', 'node_modules'])
+const FORA_DA_COPIA = new Set(['.git', 'docs', 'scripts', 'tests', '.claude', '.claude-review', 'CLAUDE.md', 'node_modules', 'extensions'])
 
 // Telas que o cenário imprime, na ordem do README. Se alguma faltar, o script para com erro.
-const TELAS_ESPERADAS = ['galeria', 'terminal-galeria', 'editor', 'editor-prompt', 'mapa', 'gerar', 'modelos']
+const TELAS_ESPERADAS = ['galeria', 'terminal-galeria', 'editor', 'editor-prompt', 'mapa', 'gerar', 'modelos', 'estruturas', 'estruturas-detalhe', 'estruturas-templates', 'estruturas-edicao']
 
 // Navegadores procurados, nesta ordem, quando CHROME_PATH não está definido.
 const NAVEGADORES = [

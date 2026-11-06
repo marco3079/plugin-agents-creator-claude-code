@@ -1,6 +1,6 @@
 {
   "name": "agents-creator",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Estúdio visual de agentes e subagentes do Claude Code: galeria, editor com pré-visualização, modelos prontos, estruturas de equipe, geração com IA, mapa de delegação e lixeira, num painel ao lado do chat.",
   "author": { "name": "Marco Antônio" },
   "license": "MIT",

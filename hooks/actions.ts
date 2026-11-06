@@ -11,6 +11,7 @@ import type { EngineInterface } from 'claude-code'
 import type {
   AgentFields,
   Catalog,
+  DestinoRascunho,
   Draft,
   Flags,
   GenState,
@@ -24,6 +25,7 @@ import type {
 } from '../types'
 import { agentSpec, emptyFields, finalSlug, finalize, liveSlug, parseAgent, splitList, toMarkdown, validate } from './lib/agent'
 import { complete, extractJson, fieldsFromJson, generationPrompt, improvementPrompt } from './lib/ai'
+import { gravarAgenteNoTemplate, lerTemplate } from './lib/estruturas/biblioteca'
 import { baseName, dirName, displayPath, joinPath, readText, removeFile, scanCatalog, scopeDir, writeMainAgent } from './lib/files'
 import { REGRA_POPUP_GERAL } from './lib/perguntas'
 import { TEMPLATES } from './lib/templates'
@@ -43,8 +45,8 @@ export const EMPTY_TEST: TestState = { task: '', busy: false, agentId: '', agent
 const viewAtom = atom({ plugin: 'agents-creator', key: 'view' } as const, 'lista' as View)
 const filterAtom = atom({ plugin: 'agents-creator', key: 'filter' } as const, '')
 const catalogAtom = atom({ plugin: 'agents-creator', key: 'catalog' } as const, null as Catalog | null, { shape: 'catalog-1' })
-const draftAtom = atom({ plugin: 'agents-creator', key: 'draft' } as const, null as Draft | null, { shape: 'draft-1' })
-const stashAtom = atom({ plugin: 'agents-creator', key: 'stash' } as const, null as Draft | null, { shape: 'draft-1' })
+const draftAtom = atom({ plugin: 'agents-creator', key: 'draft' } as const, null as Draft | null, { shape: 'draft-2' })
+const stashAtom = atom({ plugin: 'agents-creator', key: 'stash' } as const, null as Draft | null, { shape: 'draft-2' })
 const statusAtom = atom({ plugin: 'agents-creator', key: 'status' } as const, null as Status, { shape: 'status-1' })
 const genAtom = atom(
   { plugin: 'agents-creator', key: 'gen' } as const,
@@ -252,7 +254,10 @@ export function targetPath(catalog: Catalog, draft: Draft, fields: AgentFields):
 // ---------------------------------------------------------------------------
 // rascunhos
 
-function blankDraft(fields: AgentFields, scope: SaveScope, isDirty: boolean): Draft {
+/** Destino de um rascunho de template da biblioteca (Meus templates). */
+type DestinoTemplate = Extract<DestinoRascunho, { tipo: 'template' }>
+
+function blankDraft(fields: AgentFields, scope: SaveScope, isDirty: boolean, destino: DestinoRascunho): Draft {
   return {
     mode: 'new',
     scope,
@@ -267,6 +272,7 @@ function blankDraft(fields: AgentFields, scope: SaveScope, isDirty: boolean): Dr
     force: false,
     eol: '\n',
     buffers: {},
+    destino,
   }
 }
 
@@ -282,10 +288,11 @@ async function replaceDraft($: Dollar, next: Draft | null, back: View): Promise<
 export async function newDraft(
   $: Dollar,
   base: AgentFields | null,
-  options: { scope?: SaveScope; back?: View; note?: string } = {},
+  options: { scope?: SaveScope; back?: View; note?: string; destino?: DestinoRascunho } = {},
 ): Promise<void> {
   const previous = await read($, draftAtom)
-  await replaceDraft($, blankDraft(base ?? emptyFields(), options.scope ?? 'project', base !== null), options.back ?? 'lista')
+  const destino: DestinoRascunho = options.destino ?? { tipo: 'arquivo' }
+  await replaceDraft($, blankDraft(base ?? emptyFields(), options.scope ?? 'project', base !== null, destino), options.back ?? 'lista')
   await loadLiveTools($)
   if (previous?.dirty) await say($, 'warn', `As alterações não salvas de "${previous.fields.name || 'novo agente'}" foram guardadas.`)
   else if (options.note) await say($, 'info', options.note)
@@ -332,6 +339,7 @@ export async function openAgent($: Dollar, id: string, back: View = 'lista'): Pr
     force: false,
     eol: parsed.eol,
     buffers: {},
+    destino: { tipo: 'arquivo' },
   }
   const previous = await read($, draftAtom)
   await replaceDraft($, draft, back)
@@ -346,6 +354,52 @@ export async function openAgent($: Dollar, id: string, back: View = 'lista'): Pr
     await clearStatus($)
   }
   await go($, 'editor')
+}
+
+/** Abre no editor um agente de um template de Meus templates. O conteúdo é o do template; salvar grava no template. */
+export async function abrirRascunhoDeTemplate(
+  $: Dollar,
+  templateId: string,
+  file: string,
+  conteudo: string,
+  titulo: string,
+): Promise<void> {
+  await ensureCatalog($)
+  const parsed = parseAgent(conteudo)
+  const fields = parsed.fields.name ? parsed.fields : { ...parsed.fields, name: file.replace(/\.md$/i, '') }
+  const draft: Draft = {
+    mode: 'edit',
+    scope: 'project',
+    originId: '',
+    originPath: '',
+    originRaw: conteudo,
+    originName: fields.name,
+    fields,
+    extra: parsed.extra,
+    dirty: false,
+    history: [],
+    force: false,
+    eol: parsed.eol,
+    buffers: {},
+    destino: { tipo: 'template', templateId, file, titulo },
+  }
+  const previous = await read($, draftAtom)
+  await replaceDraft($, draft, 'estruturas')
+  await loadLiveTools($)
+  if (previous?.dirty) await say($, 'warn', `As alterações não salvas de "${previous.fields.name || 'novo agente'}" foram guardadas.`)
+  else if (parsed.error) await say($, 'warn', parsed.error)
+  else await clearStatus($)
+  await go($, 'editor')
+}
+
+/** Rascunho em branco de um agente novo para um template de Meus templates. Salvar acrescenta no template. */
+export async function novoRascunhoDeTemplate($: Dollar, templateId: string, titulo: string): Promise<void> {
+  await ensureCatalog($)
+  await newDraft($, null, {
+    back: 'estruturas',
+    destino: { tipo: 'template', templateId, file: '', titulo },
+    note: `Novo agente para o template "${titulo}": preencha e clique em Salvar no template.`,
+  })
 }
 
 export function findAgentId(catalog: Catalog, name: string): string {
@@ -410,6 +464,18 @@ export async function setNameInput($: Dollar, value: string): Promise<void> {
 export async function revert($: Dollar): Promise<void> {
   const draft = await read($, draftAtom)
   if (!draft) return
+  if (draft.destino.tipo === 'template') {
+    const { templateId, file, titulo } = draft.destino
+    await update($, draftAtom, () => null)
+    if (file === '') {
+      await clearStatus($)
+      await go($, 'estruturas')
+      return
+    }
+    await abrirRascunhoDeTemplate($, templateId, file, draft.originRaw, titulo)
+    await say($, 'info', 'Alterações descartadas.')
+    return
+  }
   if (draft.mode === 'new') {
     await update($, draftAtom, () => null)
     await clearStatus($)
@@ -423,6 +489,11 @@ export async function revert($: Dollar): Promise<void> {
 }
 
 export async function back($: Dollar): Promise<void> {
+  const draft = await read($, draftAtom)
+  if (draft?.destino.tipo === 'template') {
+    await go($, 'estruturas')
+    return
+  }
   const flags = await read($, flagsAtom)
   const target = (flags.back as View) || 'lista'
   await go($, target === 'editor' ? 'lista' : target)
@@ -431,9 +502,45 @@ export async function back($: Dollar): Promise<void> {
 // ---------------------------------------------------------------------------
 // gravar, duplicar, excluir, restaurar
 
+/** Salva o agente no template de Meus templates. Nada é gravado na pasta de agentes do projeto. */
+async function salvarNoTemplate($: Dollar, draft: Draft, destino: DestinoTemplate): Promise<boolean> {
+  const catalog = await ensureCatalog($)
+  const fields = finalize(draft.fields)
+  const issues = validate(fields, { scope: draft.scope, selfPath: '', others: [] })
+  const errors = issues.filter(issue => issue.level === 'error')
+  if (errors.length > 0) {
+    await say($, 'error', `Corrija antes de salvar: ${errors.map(issue => issue.text).join(' ')}`)
+    return false
+  }
+  const tpl = await lerTemplate($, catalog.paths, destino.templateId)
+  if (tpl === null) {
+    await say($, 'error', `O template "${destino.titulo}" não está mais em Meus templates.`)
+    return false
+  }
+  const repetido = tpl.agents.some(
+    agente => agente.file !== destino.file && parseAgent(agente.content).fields.name.toLowerCase() === fields.name.toLowerCase(),
+  )
+  if (repetido) {
+    await say($, 'error', `Já existe um agente "${fields.name}" neste template.`)
+    return false
+  }
+  const conteudo = toMarkdown(fields, draft.extra, draft.mode === 'edit' ? draft.originRaw : null, draft.eol)
+  try {
+    await gravarAgenteNoTemplate($, catalog.paths, destino.templateId, destino.file, fields.name, conteudo)
+  } catch (error) {
+    await say($, 'error', `Não consegui salvar no template: ${message(error)}`)
+    return false
+  }
+  await update($, draftAtom, () => null)
+  await go($, 'estruturas')
+  await say($, 'ok', `"${fields.name}" salvo no template "${destino.titulo}".`)
+  return true
+}
+
 export async function save($: Dollar): Promise<boolean> {
   const draft = await read($, draftAtom)
   if (!draft) return false
+  if (draft.destino.tipo === 'template') return salvarNoTemplate($, draft, draft.destino)
   const catalog = await ensureCatalog($)
   const fields = finalize(draft.fields)
   const isEdit = draft.mode === 'edit'
@@ -527,7 +634,7 @@ export async function saveCopy($: Dollar, scope: SaveScope): Promise<void> {
 
 export async function duplicate($: Dollar): Promise<void> {
   const draft = await read($, draftAtom)
-  if (!draft) return
+  if (!draft || draft.destino.tipo === 'template') return
   const catalog = await ensureCatalog($)
   const name = uniqueName(`${finalSlug(draft.fields.name) || 'agente'}-copia`, catalog)
   await update($, draftAtom, () => ({
@@ -550,7 +657,7 @@ export async function duplicate($: Dollar): Promise<void> {
 
 export async function deleteCurrent($: Dollar): Promise<void> {
   const draft = await read($, draftAtom)
-  if (!draft || draft.mode !== 'edit') return
+  if (!draft || draft.mode !== 'edit' || draft.destino.tipo === 'template') return
   const catalog = await ensureCatalog($)
   const content = (await readText($, draft.originPath)) ?? draft.originRaw
   const now = await $.clock.now()

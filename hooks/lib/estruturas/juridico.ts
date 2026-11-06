@@ -1,3 +1,5 @@
+// Estrutura "Escritório jurídico": pesquisa, contratos, peças e LGPD, com um advogado sênior revisando tudo.
+
 import type { Structure } from './tipos'
 import { papel } from './tipos'
 

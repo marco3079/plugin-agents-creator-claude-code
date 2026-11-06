@@ -75,6 +75,8 @@ export type LocalTemplate = {
   agents: readonly TemplateAgent[]
   /** Corpo do fluxo para o CLAUDE.md, SEM marcadores. */
   claudeMd: string
+  /** '' ou o id da estrutura do catálogo de onde este template foi clonado. JSON antigo sem o campo vale ''. */
+  base: string
 }
 
 /** Como o catálogo descreve um papel (entrada de `papel`). */
